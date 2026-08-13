@@ -1,198 +1,954 @@
 /* =========================================================
    VTOOS SMART HOSPITAL
-   DEMO APPLICATION
+   FIREBASE PRODUCTION FOUNDATION
+   Patient Authentication + Token Booking + Doctor Queue
 ========================================================= */
+
+import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    onAuthStateChanged,
+    signOut
+} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+
+import {
+    getFirestore,
+    collection,
+    addDoc,
+    doc,
+    getDoc,
+    setDoc,
+    updateDoc,
+    query,
+    where,
+    orderBy,
+    getDocs,
+    onSnapshot
+} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+import { app } from "../firebase-config.js";
 
 
 /* =========================================================
-   STORAGE HELPERS
+   FIREBASE
 ========================================================= */
 
-const STORAGE_KEYS = {
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-    patients: "vtoos_patients",
-    tokens: "vtoos_tokens",
-    followups: "vtoos_followups",
-    documents: "vtoos_documents",
-    prescriptions: "vtoos_prescriptions",
-    notifications: "vtoos_notifications",
-    doctorStatus: "vtoos_doctor_status"
 
+/* =========================================================
+   GLOBAL STATE
+========================================================= */
+
+let currentRole = null;
+let currentPatient = null;
+let currentDoctor = "doctor1";
+let currentConsultationToken = null;
+let unsubscribeTokens = null;
+
+
+/* =========================================================
+   DOCTORS
+========================================================= */
+
+const DOCTORS = {
+    doctor1: {
+        id: "doctor1",
+        name: "Dr. Kumar",
+        department: "General Medicine"
+    },
+
+    doctor2: {
+        id: "doctor2",
+        name: "Dr. Priya",
+        department: "Pediatrics"
+    }
 };
 
 
-function getData(key, fallback = []) {
+/* =========================================================
+   DATE HELPERS
+========================================================= */
+
+function todayString() {
+
+    const now = new Date();
+
+    const year =
+        now.getFullYear();
+
+    const month =
+        String(now.getMonth() + 1)
+            .padStart(2, "0");
+
+    const day =
+        String(now.getDate())
+            .padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
+
+function getDateAfterDays(days) {
+
+    const date = new Date();
+
+    date.setDate(
+        date.getDate() + days
+    );
+
+    const year =
+        date.getFullYear();
+
+    const month =
+        String(date.getMonth() + 1)
+            .padStart(2, "0");
+
+    const day =
+        String(date.getDate())
+            .padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
+
+function formatDate(dateString) {
+
+    if (!dateString) {
+        return "--";
+    }
+
+    const date =
+        new Date(
+            dateString + "T00:00:00"
+        );
+
+    return date.toLocaleDateString(
+        "en-IN",
+        {
+            day: "2-digit",
+            month: "short",
+            year: "numeric"
+        }
+    );
+}
+
+
+function formatDateTime(value) {
+
+    if (!value) {
+        return "--";
+    }
 
     try {
 
-        const value =
-            localStorage.getItem(key);
+        const date =
+            new Date(value);
 
-        return value
-            ? JSON.parse(value)
-            : fallback;
+        return date.toLocaleString(
+            "en-IN",
+            {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+            }
+        );
 
-    } catch (error) {
+    } catch {
 
-        return fallback;
+        return "--";
+
+    }
+}
+
+
+/* =========================================================
+   TOKEN FORMAT
+========================================================= */
+
+function formatToken(number) {
+
+    return String(number)
+        .padStart(3, "0");
+
+}
+
+
+/* =========================================================
+   SAFE HTML
+========================================================= */
+
+function escapeHtml(text) {
+
+    if (
+        text === null ||
+        text === undefined
+    ) {
+        return "";
+    }
+
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+}
+
+
+/* =========================================================
+   TOAST
+========================================================= */
+
+let toastTimer = null;
+
+
+function showToast(message) {
+
+    const toast =
+        document.getElementById("toast");
+
+    if (!toast) {
+        alert(message);
+        return;
+    }
+
+    toast.textContent =
+        message;
+
+    toast.classList.add("show");
+
+    clearTimeout(toastTimer);
+
+    toastTimer =
+        setTimeout(
+            () => {
+                toast.classList.remove(
+                    "show"
+                );
+            },
+            2800
+        );
+
+}
+
+
+/* =========================================================
+   AUTH UI
+========================================================= */
+
+function createAuthModal() {
+
+    if (
+        document.getElementById(
+            "firebaseAuthModal"
+        )
+    ) {
+        return;
+    }
+
+
+    const modal =
+        document.createElement("div");
+
+    modal.id =
+        "firebaseAuthModal";
+
+    modal.className =
+        "modal show";
+
+
+    modal.innerHTML = `
+
+        <div class="modal-box">
+
+            <button
+                class="modal-close"
+                id="authCloseBtn">
+                ×
+            </button>
+
+            <div class="eyebrow">
+                VTOOS HOSPITAL
+            </div>
+
+            <h2 id="authTitle"
+                style="margin-top:8px;">
+                Patient Login
+            </h2>
+
+            <p class="muted"
+               id="authSubtitle">
+                Login to manage your hospital visits.
+            </p>
+
+
+            <div class="form-group"
+                 style="margin-top:20px;">
+
+                <label>
+                    Email
+                </label>
+
+                <input
+                    id="authEmail"
+                    type="email"
+                    placeholder="Enter email address">
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Password
+                </label>
+
+                <input
+                    id="authPassword"
+                    type="password"
+                    placeholder="Enter password">
+
+            </div>
+
+
+            <div id="signupFields"
+                 class="hidden">
+
+                <div class="form-group">
+
+                    <label>
+                        Full Name
+                    </label>
+
+                    <input
+                        id="authName"
+                        type="text"
+                        placeholder="Enter full name">
+
+                </div>
+
+
+                <div class="form-row">
+
+                    <div class="form-group">
+
+                        <label>
+                            Age
+                        </label>
+
+                        <input
+                            id="authAge"
+                            type="number"
+                            min="1"
+                            max="120"
+                            placeholder="Age">
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label>
+                            Gender
+                        </label>
+
+                        <select id="authGender">
+
+                            <option value="Male">
+                                Male
+                            </option>
+
+                            <option value="Female">
+                                Female
+                            </option>
+
+                            <option value="Other">
+                                Other
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Mobile Number
+                    </label>
+
+                    <input
+                        id="authMobile"
+                        type="tel"
+                        maxlength="10"
+                        placeholder="10 digit mobile">
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Address
+                    </label>
+
+                    <input
+                        id="authAddress"
+                        type="text"
+                        placeholder="Address">
+
+                </div>
+
+            </div>
+
+
+            <button
+                id="authSubmitBtn"
+                class="primary-btn full"
+                style="margin-top:10px;">
+
+                Login
+
+            </button>
+
+
+            <button
+                id="authSwitchBtn"
+                class="secondary-btn full"
+                style="margin-top:10px;">
+
+                New patient? Create account
+
+            </button>
+
+
+            <p
+                id="authMessage"
+                class="muted"
+                style="margin-top:14px;text-align:center;">
+
+            </p>
+
+        </div>
+
+    `;
+
+
+    document.body.appendChild(
+        modal
+    );
+
+
+    document
+        .getElementById(
+            "authCloseBtn"
+        )
+        .onclick = () => {
+
+            modal.remove();
+
+        };
+
+
+    document
+        .getElementById(
+            "authSwitchBtn"
+        )
+        .onclick =
+        toggleAuthMode;
+
+
+    document
+        .getElementById(
+            "authSubmitBtn"
+        )
+        .onclick =
+        submitAuth;
+
+}
+
+
+let authMode = "login";
+
+
+function toggleAuthMode() {
+
+    authMode =
+        authMode === "login"
+            ? "signup"
+            : "login";
+
+
+    const title =
+        document.getElementById(
+            "authTitle"
+        );
+
+    const subtitle =
+        document.getElementById(
+            "authSubtitle"
+        );
+
+    const submit =
+        document.getElementById(
+            "authSubmitBtn"
+        );
+
+    const switchBtn =
+        document.getElementById(
+            "authSwitchBtn"
+        );
+
+    const fields =
+        document.getElementById(
+            "signupFields"
+        );
+
+
+    if (
+        authMode === "signup"
+    ) {
+
+        title.textContent =
+            "Create Patient Account";
+
+        subtitle.textContent =
+            "Enter your details once. Future visits will use your saved profile.";
+
+        submit.textContent =
+            "Create Account";
+
+        switchBtn.textContent =
+            "Already registered? Login";
+
+        fields.classList.remove(
+            "hidden"
+        );
+
+    } else {
+
+        title.textContent =
+            "Patient Login";
+
+        subtitle.textContent =
+            "Login to manage your hospital visits.";
+
+        submit.textContent =
+            "Login";
+
+        switchBtn.textContent =
+            "New patient? Create account";
+
+        fields.classList.add(
+            "hidden"
+        );
 
     }
 
 }
 
 
-function setData(key, data) {
+/* =========================================================
+   PATIENT AUTH
+========================================================= */
 
-    localStorage.setItem(
-        key,
-        JSON.stringify(data)
+async function submitAuth() {
+
+    const email =
+        document
+            .getElementById(
+                "authEmail"
+            )
+            .value
+            .trim();
+
+    const password =
+        document
+            .getElementById(
+                "authPassword"
+            )
+            .value;
+
+
+    const message =
+        document.getElementById(
+            "authMessage"
+        );
+
+
+    if (!email) {
+
+        message.textContent =
+            "Enter your email.";
+
+        return;
+
+    }
+
+
+    if (
+        password.length < 6
+    ) {
+
+        message.textContent =
+            "Password must contain at least 6 characters.";
+
+        return;
+
+    }
+
+
+    try {
+
+        message.textContent =
+            "Please wait...";
+
+
+        if (
+            authMode === "signup"
+        ) {
+
+            const name =
+                document
+                    .getElementById(
+                        "authName"
+                    )
+                    .value
+                    .trim();
+
+            const age =
+                document
+                    .getElementById(
+                        "authAge"
+                    )
+                    .value;
+
+            const gender =
+                document
+                    .getElementById(
+                        "authGender"
+                    )
+                    .value;
+
+            const mobile =
+                document
+                    .getElementById(
+                        "authMobile"
+                    )
+                    .value
+                    .trim();
+
+            const address =
+                document
+                    .getElementById(
+                        "authAddress"
+                    )
+                    .value
+                    .trim();
+
+
+            if (!name) {
+
+                message.textContent =
+                    "Enter your name.";
+
+                return;
+
+            }
+
+
+            if (!age) {
+
+                message.textContent =
+                    "Enter your age.";
+
+                return;
+
+            }
+
+
+            if (
+                !/^[0-9]{10}$/.test(
+                    mobile
+                )
+            ) {
+
+                message.textContent =
+                    "Enter a valid 10 digit mobile number.";
+
+                return;
+
+            }
+
+
+            const credential =
+                await createUserWithEmailAndPassword(
+                    auth,
+                    email,
+                    password
+                );
+
+
+            const uid =
+                credential.user.uid;
+
+
+            const patientId =
+                await generatePatientId();
+
+
+            const patient = {
+
+                uid,
+
+                patientId,
+
+                name,
+
+                email,
+
+                mobile,
+
+                age: Number(age),
+
+                gender,
+
+                address,
+
+                role: "patient",
+
+                createdAt:
+                    new Date().toISOString(),
+
+                updatedAt:
+                    new Date().toISOString()
+
+            };
+
+
+            await setDoc(
+                doc(
+                    db,
+                    "patients",
+                    uid
+                ),
+                patient
+            );
+
+
+            message.textContent =
+                "Account created successfully.";
+
+
+            showToast(
+                "Patient account created."
+            );
+
+
+            closeAuthModal();
+
+
+            await loadPatientProfile(
+                credential.user
+            );
+
+
+            openPatientApp();
+
+
+        } else {
+
+            const credential =
+                await signInWithEmailAndPassword(
+                    auth,
+                    email,
+                    password
+                );
+
+
+            closeAuthModal();
+
+
+            await loadPatientProfile(
+                credential.user
+            );
+
+
+            openPatientApp();
+
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "Authentication error:",
+            error
+        );
+
+
+        let text =
+            "Unable to complete login.";
+
+
+        if (
+            error.code ===
+            "auth/email-already-in-use"
+        ) {
+
+            text =
+                "This email is already registered.";
+
+        }
+
+        else if (
+            error.code ===
+            "auth/invalid-credential"
+        ) {
+
+            text =
+                "Invalid email or password.";
+
+        }
+
+        else if (
+            error.code ===
+            "auth/weak-password"
+        ) {
+
+            text =
+                "Password must contain at least 6 characters.";
+
+        }
+
+        else if (
+            error.code ===
+            "auth/invalid-email"
+        ) {
+
+            text =
+                "Invalid email address.";
+
+        }
+
+
+        message.textContent =
+            text;
+
+    }
+
+}
+
+
+/* =========================================================
+   CLOSE AUTH MODAL
+========================================================= */
+
+function closeAuthModal() {
+
+    const modal =
+        document.getElementById(
+            "firebaseAuthModal"
+        );
+
+    if (modal) {
+        modal.remove();
+    }
+
+}
+
+
+/* =========================================================
+   PATIENT ID
+========================================================= */
+
+async function generatePatientId() {
+
+    const snapshot =
+        await getDocs(
+            collection(
+                db,
+                "patients"
+            )
+        );
+
+
+    const number =
+        snapshot.size + 1;
+
+
+    return (
+        "VTOOS-P-" +
+        String(number)
+            .padStart(6, "0")
     );
 
 }
 
 
 /* =========================================================
-   INITIAL DATA
+   LOAD PATIENT PROFILE
 ========================================================= */
 
-function initializeDemoData() {
+async function loadPatientProfile(
+    user
+) {
 
-    if (!localStorage.getItem(STORAGE_KEYS.patients)) {
-
-        const patients = [
-
-            {
-                id: "VTOOS-P-000001",
-                name: "Kumar",
-                mobile: "9876543210",
-                age: 42,
-                gender: "Male",
-                address: "Chennai",
-                createdAt: new Date().toISOString()
-            },
-
-            {
-                id: "VTOOS-P-000002",
-                name: "Priya",
-                mobile: "9876543211",
-                age: 32,
-                gender: "Female",
-                address: "Chennai",
-                createdAt: new Date().toISOString()
-            }
-
-        ];
-
-        setData(
-            STORAGE_KEYS.patients,
-            patients
-        );
-
+    if (!user) {
+        return;
     }
 
 
-    if (!localStorage.getItem(STORAGE_KEYS.tokens)) {
-
-        setData(
-            STORAGE_KEYS.tokens,
-            []
+    const patientRef =
+        doc(
+            db,
+            "patients",
+            user.uid
         );
 
-    }
 
-
-    if (!localStorage.getItem(STORAGE_KEYS.followups)) {
-
-        setData(
-            STORAGE_KEYS.followups,
-            [
-
-                {
-                    id: "FU-001",
-                    patientId: "VTOOS-P-000001",
-                    patientName: "Kumar",
-                    date: getDateAfterDays(2),
-                    status: "Pending",
-                    requiredDocument: "Blood Test Report"
-                }
-
-            ]
+    const snapshot =
+        await getDoc(
+            patientRef
         );
 
-    }
 
+    if (
+        snapshot.exists()
+    ) {
 
-    if (!localStorage.getItem(STORAGE_KEYS.documents)) {
+        currentPatient =
+            snapshot.data();
 
-        setData(
-            STORAGE_KEYS.documents,
-            []
-        );
+    } else {
 
-    }
+        currentPatient = {
 
+            uid:
+                user.uid,
 
-    if (!localStorage.getItem(STORAGE_KEYS.prescriptions)) {
+            patientId:
+                user.uid,
 
-        setData(
-            STORAGE_KEYS.prescriptions,
-            [
+            name:
+                user.email
+                    .split("@")[0],
 
-                {
-                    id: "RX-000001",
-                    patientId: "VTOOS-P-000001",
-                    patientName: "Kumar",
-                    doctor: "Dr. Kumar",
-                    date: todayString(),
-                    medicines: [
+            email:
+                user.email,
 
-                        {
-                            name: "Paracetamol 500 mg",
-                            dosage: "1 - 0 - 1",
-                            instruction: "After food",
-                            days: 3
-                        },
+            role:
+                "patient"
 
-                        {
-                            name: "Cetirizine 10 mg",
-                            dosage: "0 - 0 - 1",
-                            instruction: "After food",
-                            days: 5
-                        }
-
-                    ],
-
-                    note: "Take adequate rest."
-
-                }
-
-            ]
-        );
-
-    }
-
-
-    if (!localStorage.getItem(STORAGE_KEYS.notifications)) {
-
-        setData(
-            STORAGE_KEYS.notifications,
-            []
-        );
-
-    }
-
-
-    if (!localStorage.getItem(STORAGE_KEYS.doctorStatus)) {
-
-        setData(
-            STORAGE_KEYS.doctorStatus,
-            {
-
-                doctor1: true,
-                doctor2: false
-
-            }
-        );
+        };
 
     }
 
@@ -200,45 +956,42 @@ function initializeDemoData() {
 
 
 /* =========================================================
-   GLOBAL USER
+   PATIENT APP OPEN
 ========================================================= */
 
-let currentRole = null;
+function openPatientApp() {
 
-let currentPatient = null;
-
-let currentDoctor = "doctor1";
-
-let currentConsultationToken = null;
+    currentRole =
+        "patient";
 
 
-/* =========================================================
-   LOGIN
-========================================================= */
+    const loginScreen =
+        document.getElementById(
+            "loginScreen"
+        );
 
-function loginAs(role) {
+    const appScreen =
+        document.getElementById(
+            "appScreen"
+        );
 
-    currentRole = role;
 
-    if (role === "patient") {
+    if (loginScreen) {
 
-        const patients =
-            getData(
-                STORAGE_KEYS.patients
-            );
-
-        currentPatient =
-            patients[0];
+        loginScreen
+            .classList
+            .remove("active");
 
     }
 
-    document
-        .getElementById("loginScreen")
-        .classList.remove("active");
 
-    document
-        .getElementById("appScreen")
-        .classList.add("active");
+    if (appScreen) {
+
+        appScreen
+            .classList
+            .add("active");
+
+    }
 
 
     const userName =
@@ -247,31 +1000,105 @@ function loginAs(role) {
         );
 
 
-    if (role === "patient") {
+    const title =
+        document.getElementById(
+            "dashboardTitle"
+        );
+
+
+    if (userName) {
 
         userName.textContent =
-            currentPatient.name;
-
-        document
-            .getElementById(
-                "dashboardTitle"
-            )
-            .textContent =
-            "Hello, " +
-            currentPatient.name;
+            currentPatient?.name ||
+            "Patient";
 
     }
 
-    else if (role === "doctor") {
+
+    if (title) {
+
+        title.textContent =
+            "Hello, " +
+            (
+                currentPatient?.name ||
+                "Patient"
+            );
+
+    }
+
+
+    setupRoleDashboard();
+
+    setupVisitDate();
+
+    refreshAll();
+
+}
+
+
+/* =========================================================
+   LOGIN BUTTON
+========================================================= */
+
+function loginAs(role) {
+
+    if (
+        role === "patient"
+    ) {
+
+        createAuthModal();
+
+        return;
+
+    }
+
+
+    /*
+       Doctor and Reception authentication
+       will be connected to staff accounts
+       in the next security phase.
+    */
+
+    currentRole =
+        role;
+
+
+    document
+        .getElementById(
+            "loginScreen"
+        )
+        .classList
+        .remove("active");
+
+
+    document
+        .getElementById(
+            "appScreen"
+        )
+        .classList
+        .add("active");
+
+
+    const userName =
+        document.getElementById(
+            "currentUserName"
+        );
+
+
+    const title =
+        document.getElementById(
+            "dashboardTitle"
+        );
+
+
+    if (
+        role === "doctor"
+    ) {
 
         userName.textContent =
             "Dr. Kumar";
 
-        document
-            .getElementById(
-                "dashboardTitle"
-            )
-            .textContent =
+        title.textContent =
             "Doctor Dashboard";
 
     }
@@ -281,11 +1108,7 @@ function loginAs(role) {
         userName.textContent =
             "Reception";
 
-        document
-            .getElementById(
-                "dashboardTitle"
-            )
-            .textContent =
+        title.textContent =
             "Reception Dashboard";
 
     }
@@ -302,21 +1125,59 @@ function loginAs(role) {
    LOGOUT
 ========================================================= */
 
-function logout() {
+async function logout() {
 
-    currentRole = null;
+    try {
 
-    currentPatient = null;
+        await signOut(
+            auth
+        );
 
-    currentConsultationToken = null;
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+    }
+
+
+    currentRole =
+        null;
+
+    currentPatient =
+        null;
+
+    currentConsultationToken =
+        null;
+
+
+    if (
+        unsubscribeTokens
+    ) {
+
+        unsubscribeTokens();
+
+        unsubscribeTokens =
+            null;
+
+    }
+
 
     document
-        .getElementById("appScreen")
-        .classList.remove("active");
+        .getElementById(
+            "appScreen"
+        )
+        .classList
+        .remove("active");
+
 
     document
-        .getElementById("loginScreen")
-        .classList.add("active");
+        .getElementById(
+            "loginScreen"
+        )
+        .classList
+        .add("active");
 
 }
 
@@ -327,40 +1188,78 @@ function logout() {
 
 function setupRoleDashboard() {
 
-    document
-        .getElementById("patientDashboard")
-        .classList.add("hidden");
+    const patient =
+        document.getElementById(
+            "patientDashboard"
+        );
 
-    document
-        .getElementById("doctorDashboard")
-        .classList.add("hidden");
+    const doctor =
+        document.getElementById(
+            "doctorDashboard"
+        );
 
-    document
-        .getElementById("staffDashboard")
-        .classList.add("hidden");
+    const staff =
+        document.getElementById(
+            "staffDashboard"
+        );
 
 
-    if (currentRole === "patient") {
+    if (patient) {
 
-        document
-            .getElementById("patientDashboard")
-            .classList.remove("hidden");
-
-    }
-
-    if (currentRole === "doctor") {
-
-        document
-            .getElementById("doctorDashboard")
-            .classList.remove("hidden");
+        patient
+            .classList
+            .add("hidden");
 
     }
 
-    if (currentRole === "staff") {
 
-        document
-            .getElementById("staffDashboard")
-            .classList.remove("hidden");
+    if (doctor) {
+
+        doctor
+            .classList
+            .add("hidden");
+
+    }
+
+
+    if (staff) {
+
+        staff
+            .classList
+            .add("hidden");
+
+    }
+
+
+    if (
+        currentRole ===
+        "patient"
+    ) {
+
+        patient?.classList
+            .remove("hidden");
+
+    }
+
+
+    if (
+        currentRole ===
+        "doctor"
+    ) {
+
+        doctor?.classList
+            .remove("hidden");
+
+    }
+
+
+    if (
+        currentRole ===
+        "staff"
+    ) {
+
+        staff?.classList
+            .remove("hidden");
 
     }
 
@@ -374,11 +1273,14 @@ function setupRoleDashboard() {
 function openPage(page) {
 
     document
-        .querySelectorAll(".page")
+        .querySelectorAll(
+            ".page"
+        )
         .forEach(
-            p => p.classList.remove(
-                "active-page"
-            )
+            p =>
+                p.classList.remove(
+                    "active-page"
+                )
         );
 
 
@@ -398,13 +1300,16 @@ function openPage(page) {
 
 
     document
-        .querySelectorAll(".nav-item")
+        .querySelectorAll(
+            ".nav-item"
+        )
         .forEach(
             btn => {
 
                 btn.classList.toggle(
                     "active",
-                    btn.dataset.page === page
+                    btn.dataset.page ===
+                    page
                 );
 
             }
@@ -417,65 +1322,36 @@ function openPage(page) {
 
 
 /* =========================================================
-   TOKEN HELPERS
+   VISIT DATE SETUP
 ========================================================= */
 
-function todayString() {
+function setupVisitDate() {
 
-    const now = new Date();
-
-    return now
-        .toISOString()
-        .split("T")[0];
-
-}
-
-
-function getDateAfterDays(days) {
-
-    const date =
-        new Date();
-
-    date.setDate(
-        date.getDate() + days
-    );
-
-    return date
-        .toISOString()
-        .split("T")[0];
-
-}
-
-
-function getNextTokenNumber(doctorId) {
-
-    const tokens =
-        getData(
-            STORAGE_KEYS.tokens
+    const input =
+        document.getElementById(
+            "patientVisitDate"
         );
 
 
-    const todayTokens =
-        tokens.filter(
-            token =>
-                token.date === todayString() &&
-                token.doctorId === doctorId
-        );
-
-
-    if (!todayTokens.length) {
-
-        return 1;
-
+    if (!input) {
+        return;
     }
 
 
-    return Math.max(
-        ...todayTokens.map(
-            token =>
-                Number(token.number)
-        )
-    ) + 1;
+    const today =
+        todayString();
+
+
+    input.min =
+        today;
+
+
+    if (!input.value) {
+
+        input.value =
+            today;
+
+    }
 
 }
 
@@ -484,10 +1360,15 @@ function getNextTokenNumber(doctorId) {
    REASON
 ========================================================= */
 
-function selectReason(button, reason) {
+function selectReason(
+    button,
+    reason
+) {
 
     document
-        .querySelectorAll(".reason-btn")
+        .querySelectorAll(
+            ".reason-btn"
+        )
         .forEach(
             btn =>
                 btn.classList.remove(
@@ -501,11 +1382,146 @@ function selectReason(button, reason) {
     );
 
 
-    document
-        .getElementById(
+    const field =
+        document.getElementById(
             "selectedReason"
-        )
-        .value = reason;
+        );
+
+
+    if (field) {
+
+        field.value =
+            reason;
+
+    }
+
+}
+
+
+/* =========================================================
+   DOCTOR AVAILABILITY
+========================================================= */
+
+async function getDoctorAvailability(
+    doctorId
+) {
+
+    try {
+
+        const ref =
+            doc(
+                db,
+                "doctorStatus",
+                doctorId
+            );
+
+
+        const snapshot =
+            await getDoc(
+                ref
+            );
+
+
+        if (
+            snapshot.exists()
+        ) {
+
+            return (
+                snapshot.data()
+                    .available === true
+            );
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            "Availability error:",
+            error
+        );
+
+    }
+
+
+    return true;
+
+}
+
+
+/* =========================================================
+   TOKEN NUMBER
+========================================================= */
+
+async function getNextTokenNumber(
+    doctorId,
+    visitDate
+) {
+
+    const tokenQuery =
+        query(
+            collection(
+                db,
+                "tokens"
+            ),
+            where(
+                "doctorId",
+                "==",
+                doctorId
+            ),
+            where(
+                "visitDate",
+                "==",
+                visitDate
+            )
+        );
+
+
+    const snapshot =
+        await getDocs(
+            tokenQuery
+        );
+
+
+    if (
+        snapshot.empty
+    ) {
+
+        return 1;
+
+    }
+
+
+    let max =
+        0;
+
+
+    snapshot.forEach(
+        item => {
+
+            const data =
+                item.data();
+
+
+            const number =
+                Number(
+                    data.number
+                );
+
+
+            if (
+                number > max
+            ) {
+
+                max =
+                    number;
+
+            }
+
+        }
+    );
+
+
+    return max + 1;
 
 }
 
@@ -514,7 +1530,7 @@ function selectReason(button, reason) {
    PATIENT TOKEN
 ========================================================= */
 
-function generatePatientToken() {
+async function generatePatientToken() {
 
     if (!currentPatient) {
 
@@ -532,7 +1548,7 @@ function generatePatientToken() {
             .getElementById(
                 "selectedReason"
             )
-            .value;
+            ?.value;
 
 
     if (!reason) {
@@ -551,26 +1567,98 @@ function generatePatientToken() {
             .getElementById(
                 "patientDoctor"
             )
-            .value;
+            ?.value;
 
 
-    const token =
-        createToken(
-            currentPatient,
-            doctorId,
-            reason,
-            "Patient"
+    const visitDate =
+        document
+            .getElementById(
+                "patientVisitDate"
+            )
+            ?.value;
+
+
+    if (!visitDate) {
+
+        showToast(
+            "Please select visit date."
+        );
+
+        return;
+
+    }
+
+
+    if (
+        visitDate <
+        todayString()
+    ) {
+
+        showToast(
+            "Visit date cannot be in the past."
+        );
+
+        return;
+
+    }
+
+
+    const available =
+        await getDoctorAvailability(
+            doctorId
         );
 
 
-    showToast(
-        "Token " +
-        formatToken(token.number) +
-        " generated."
-    );
+    if (!available) {
+
+        showToast(
+            "Doctor is not available for booking."
+        );
+
+        return;
+
+    }
 
 
-    refreshAll();
+    try {
+
+        const token =
+            await createToken(
+                currentPatient,
+                doctorId,
+                reason,
+                "Patient",
+                visitDate
+            );
+
+
+        showToast(
+            "Token " +
+            formatToken(
+                token.number
+            ) +
+            " booked for " +
+            formatDate(
+                visitDate
+            )
+        );
+
+
+        refreshAll();
+
+
+    } catch (error) {
+
+        console.error(
+            "Token error:",
+            error
+        );
+
+        showToast(
+            "Unable to generate token."
+        );
+
+    }
 
 }
 
@@ -579,53 +1667,56 @@ function generatePatientToken() {
    CREATE TOKEN
 ========================================================= */
 
-function createToken(
+async function createToken(
     patient,
     doctorId,
     reason,
-    source
+    source,
+    visitDate
 ) {
 
-    const tokens =
-        getData(
-            STORAGE_KEYS.tokens
-        );
-
-
     const number =
-        getNextTokenNumber(
-            doctorId
+        await getNextTokenNumber(
+            doctorId,
+            visitDate
         );
+
+
+    const doctor =
+        DOCTORS[
+            doctorId
+        ];
 
 
     const token = {
 
-        id:
-            "TOKEN-" +
-            Date.now(),
-
         number,
 
         patientId:
-            patient.id,
+            patient.patientId,
+
+        patientUid:
+            patient.uid,
 
         patientName:
             patient.name,
 
         patientMobile:
-            patient.mobile,
+            patient.mobile || "",
 
         doctorId,
 
         doctorName:
-            doctorId === "doctor1"
-                ? "Dr. Kumar"
-                : "Dr. Priya",
+            doctor?.name ||
+            "Doctor",
+
+        department:
+            doctor?.department ||
+            "",
 
         reason,
 
-        date:
-            todayString(),
+        visitDate,
 
         status:
             "Waiting",
@@ -635,8 +1726,9 @@ function createToken(
 
         source,
 
-        createdAt:
-            new Date().toISOString(),
+        bookedAt:
+            new Date()
+                .toISOString(),
 
         completedAt:
             null
@@ -644,23 +1736,28 @@ function createToken(
     };
 
 
-    tokens.push(token);
+    const ref =
+        await addDoc(
+            collection(
+                db,
+                "tokens"
+            ),
+            token
+        );
 
-    setData(
-        STORAGE_KEYS.tokens,
-        tokens
-    );
+
+    token.id =
+        ref.id;
 
 
-    addNotification(
-
-        patient.id,
-
+    await createNotification(
+        patient.patientId,
         "Token Generated",
-
         "Your token is " +
-        formatToken(number)
-
+        formatToken(number) +
+        " for " +
+        formatDate(visitDate) +
+        "."
     );
 
 
@@ -670,157 +1767,132 @@ function createToken(
 
 
 /* =========================================================
-   STAFF PATIENT FIND
+   DOCTOR QUEUE
 ========================================================= */
 
-function findStaffPatient() {
+async function getDoctorQueue(
+    doctorId,
+    visitDate
+) {
 
-    const mobile =
-        document
-            .getElementById(
-                "staffMobile"
+    const tokenQuery =
+        query(
+            collection(
+                db,
+                "tokens"
+            ),
+            where(
+                "doctorId",
+                "==",
+                doctorId
+            ),
+            where(
+                "visitDate",
+                "==",
+                visitDate
             )
-            .value.trim();
-
-
-    const patients =
-        getData(
-            STORAGE_KEYS.patients
         );
 
 
-    const patient =
-        patients.find(
-            p =>
-                p.mobile === mobile
+    const snapshot =
+        await getDocs(
+            tokenQuery
         );
 
 
-    const found =
-        document
-            .getElementById(
-                "staffPatientFound"
+    const queue = [];
+
+
+    snapshot.forEach(
+        item => {
+
+            const data =
+                item.data();
+
+
+            if (
+                data.status ===
+                "Waiting"
+                ||
+                data.status ===
+                "Skipped"
+            ) {
+
+                queue.push({
+                    id:
+                        item.id,
+                    ...data
+                });
+
+            }
+
+        }
+    );
+
+
+    queue.sort(
+        (a, b) => {
+
+            if (
+                a.priority &&
+                !b.priority
+            ) {
+                return -1;
+            }
+
+
+            if (
+                !a.priority &&
+                b.priority
+            ) {
+                return 1;
+            }
+
+
+            return (
+                Number(a.number) -
+                Number(b.number)
             );
 
-
-    const newPatient =
-        document
-            .getElementById(
-                "staffNewPatient"
-            );
+        }
+    );
 
 
-    if (patient) {
-
-        found.classList.remove(
-            "hidden"
-        );
-
-        newPatient.classList.add(
-            "hidden"
-        );
-
-
-        document
-            .getElementById(
-                "staffFoundName"
-            )
-            .textContent =
-            patient.name;
-
-
-        document
-            .getElementById(
-                "staffFoundId"
-            )
-            .textContent =
-            patient.id;
-
-    }
-
-    else {
-
-        found.classList.add(
-            "hidden"
-        );
-
-        newPatient.classList.remove(
-            "hidden"
-        );
-
-    }
+    return queue;
 
 }
 
 
 /* =========================================================
-   STAFF CREATE TOKEN
+   SELECT PATIENT TOKEN
 ========================================================= */
 
-function createStaffToken() {
+async function selectPatientToken(
+    tokenId
+) {
 
-    const mobile =
-        document
-            .getElementById(
-                "staffMobile"
-            )
-            .value.trim();
+    try {
 
-
-    if (!mobile) {
-
-        showToast(
-            "Enter mobile number."
-        );
-
-        return;
-
-    }
+        const tokenRef =
+            doc(
+                db,
+                "tokens",
+                tokenId
+            );
 
 
-    let patients =
-        getData(
-            STORAGE_KEYS.patients
-        );
+        const snapshot =
+            await getDoc(
+                tokenRef
+            );
 
 
-    let patient =
-        patients.find(
-            p =>
-                p.mobile === mobile
-        );
-
-
-    if (!patient) {
-
-        const name =
-            document
-                .getElementById(
-                    "staffPatientName"
-                )
-                .value.trim();
-
-
-        const age =
-            document
-                .getElementById(
-                    "staffPatientAge"
-                )
-                .value;
-
-
-        const gender =
-            document
-                .getElementById(
-                    "staffPatientGender"
-                )
-                .value;
-
-
-        if (!name) {
+        if (
+            !snapshot.exists()
+        ) {
 
             showToast(
-                "Enter patient name."
+                "Token not found."
             );
 
             return;
@@ -828,400 +1900,241 @@ function createStaffToken() {
         }
 
 
-        patient = {
+        const token = {
 
             id:
-                generatePatientId(
-                    patients
-                ),
+                snapshot.id,
 
-            name,
-
-            mobile,
-
-            age,
-
-            gender,
-
-            address: "",
-
-            createdAt:
-                new Date().toISOString()
+            ...snapshot.data()
 
         };
 
 
-        patients.push(
-            patient
-        );
+        currentConsultationToken =
+            token.id;
 
 
-        setData(
-            STORAGE_KEYS.patients,
-            patients
-        );
-
-    }
-
-
-    const doctorId =
         document
             .getElementById(
-                "staffDoctor"
+                "doctorPatientDetails"
             )
-            .value;
+            ?.classList
+            .remove("hidden");
 
 
-    const reason =
-        document
-            .getElementById(
-                "staffReason"
-            )
-            .value;
-
-
-    const token =
-        createToken(
-            patient,
-            doctorId,
-            reason,
-            "Staff"
-        );
-
-
-    showToast(
-        "Token " +
-        formatToken(token.number) +
-        " created successfully."
-    );
-
-
-    document
-        .getElementById(
-            "staffMobile"
-        )
-        .value = "";
-
-
-    refreshAll();
-
-}
-
-
-/* =========================================================
-   PATIENT ID
-========================================================= */
-
-function generatePatientId(
-    patients
-) {
-
-    const number =
-        patients.length + 1;
-
-    return (
-        "VTOOS-P-" +
-        String(number)
-            .padStart(6, "0")
-    );
-
-}
-
-
-/* =========================================================
-   DOCTOR AVAILABILITY
-========================================================= */
-
-function toggleDoctorAvailability() {
-
-    const status =
-        getData(
-            STORAGE_KEYS.doctorStatus,
-            {}
-        );
-
-
-    status.doctor1 =
-        !status.doctor1;
-
-
-    setData(
-        STORAGE_KEYS.doctorStatus,
-        status
-    );
-
-
-    if (status.doctor1) {
-
-        showToast(
-            "You are now Available."
-        );
-
-
-        notifyWaitingPatients();
-
-    }
-
-    else {
-
-        showToast(
-            "Doctor marked unavailable."
-        );
-
-    }
-
-
-    refreshAll();
-
-}
-
-
-/* =========================================================
-   NOTIFY WAITING PATIENTS
-========================================================= */
-
-function notifyWaitingPatients() {
-
-    const tokens =
-        getData(
-            STORAGE_KEYS.tokens
-        );
-
-
-    const waiting =
-        tokens.filter(
-            token =>
-                token.doctorId === "doctor1" &&
-                token.date === todayString() &&
-                token.status === "Waiting"
-        );
-
-
-    waiting.forEach(
-        token => {
-
-            addNotification(
-
-                token.patientId,
-
-                "Doctor Available",
-
-                "Dr. Kumar is now available."
-
+        const tokenElement =
+            document.getElementById(
+                "doctorCurrentToken"
             );
 
+
+        const patientElement =
+            document.getElementById(
+                "doctorCurrentPatient"
+            );
+
+
+        const nameElement =
+            document.getElementById(
+                "consultPatientName"
+            );
+
+
+        const infoElement =
+            document.getElementById(
+                "consultPatientInfo"
+            );
+
+
+        const reasonElement =
+            document.getElementById(
+                "consultReason"
+            );
+
+
+        if (tokenElement) {
+
+            tokenElement.textContent =
+                "Token " +
+                formatToken(
+                    token.number
+                );
+
         }
-    );
+
+
+        if (patientElement) {
+
+            patientElement.textContent =
+                token.patientName;
+
+        }
+
+
+        if (nameElement) {
+
+            nameElement.textContent =
+                token.patientName;
+
+        }
+
+
+        if (infoElement) {
+
+            infoElement.textContent =
+                (
+                    token.patientAge ||
+                    "--"
+                ) +
+                " years • " +
+                (
+                    token.patientGender ||
+                    "--"
+                ) +
+                " • " +
+                (
+                    token.patientMobile ||
+                    "--"
+                );
+
+        }
+
+
+        if (reasonElement) {
+
+            reasonElement.textContent =
+                token.reason;
+
+        }
+
+
+        await renderConsultationCounts(
+            token.patientUid
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+        showToast(
+            "Unable to open patient."
+        );
+
+    }
 
 }
 
 
 /* =========================================================
-   DOCTOR QUEUE
+   CONSULTATION COUNTS
 ========================================================= */
 
-function getDoctorQueue() {
+async function renderConsultationCounts(
+    patientUid
+) {
 
-    const tokens =
-        getData(
-            STORAGE_KEYS.tokens
-        );
+    if (!patientUid) {
+        return;
+    }
 
 
-    return tokens
-        .filter(
-            token =>
-                token.date === todayString() &&
-                token.doctorId === currentDoctor &&
-                (
-                    token.status === "Waiting" ||
-                    token.status === "Skipped"
+    try {
+
+        const tokenQuery =
+            query(
+                collection(
+                    db,
+                    "tokens"
+                ),
+                where(
+                    "patientUid",
+                    "==",
+                    patientUid
                 )
-        )
-        .sort(
-            (a,b) => {
+            );
+
+
+        const snapshot =
+            await getDocs(
+                tokenQuery
+            );
+
+
+        let visits =
+            0;
+
+
+        snapshot.forEach(
+            item => {
 
                 if (
-                    a.priority &&
-                    !b.priority
-                ) return -1;
+                    item.data()
+                        .status ===
+                    "Completed"
+                ) {
 
-                if (
-                    !a.priority &&
-                    b.priority
-                ) return 1;
+                    visits++;
 
-                return (
-                    Number(a.number) -
-                    Number(b.number)
-                );
+                }
 
             }
         );
 
-}
+
+        const visitsElement =
+            document.getElementById(
+                "consultVisits"
+            );
 
 
-/* =========================================================
-   SELECT PATIENT
-========================================================= */
+        if (visitsElement) {
 
-function selectPatientToken(
-    tokenId
-) {
+            visitsElement.textContent =
+                visits;
 
-    const tokens =
-        getData(
-            STORAGE_KEYS.tokens
+        }
+
+
+        const documentsElement =
+            document.getElementById(
+                "consultDocuments"
+            );
+
+
+        if (documentsElement) {
+
+            documentsElement.textContent =
+                "0";
+
+        }
+
+
+        const prescriptionsElement =
+            document.getElementById(
+                "consultPrescriptions"
+            );
+
+
+        if (
+            prescriptionsElement
+        ) {
+
+            prescriptionsElement
+                .textContent =
+                "0";
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            error
         );
-
-
-    const token =
-        tokens.find(
-            t =>
-                t.id === tokenId
-        );
-
-
-    if (!token) {
-
-        return;
 
     }
-
-
-    currentConsultationToken =
-        token.id;
-
-
-    document
-        .getElementById(
-            "doctorPatientDetails"
-        )
-        .classList.remove(
-            "hidden"
-        );
-
-
-    document
-        .getElementById(
-            "doctorCurrentToken"
-        )
-        .textContent =
-        "Token " +
-        formatToken(token.number);
-
-
-    document
-        .getElementById(
-            "doctorCurrentPatient"
-        )
-        .textContent =
-        token.patientName;
-
-
-    document
-        .getElementById(
-            "consultPatientName"
-        )
-        .textContent =
-        token.patientName;
-
-
-    const patients =
-        getData(
-            STORAGE_KEYS.patients
-        );
-
-
-    const patient =
-        patients.find(
-            p =>
-                p.id === token.patientId
-        );
-
-
-    if (patient) {
-
-        document
-            .getElementById(
-                "consultPatientInfo"
-            )
-            .textContent =
-
-            patient.age +
-            " years • " +
-            patient.gender +
-            " • " +
-            patient.mobile;
-
-    }
-
-
-    document
-        .getElementById(
-            "consultReason"
-        )
-        .textContent =
-        token.reason;
-
-
-    const docs =
-        getData(
-            STORAGE_KEYS.documents
-        )
-        .filter(
-            d =>
-                d.patientId ===
-                token.patientId
-        );
-
-
-    const prescriptions =
-        getData(
-            STORAGE_KEYS.prescriptions
-        )
-        .filter(
-            p =>
-                p.patientId ===
-                token.patientId
-        );
-
-
-    const visits =
-        getData(
-            STORAGE_KEYS.tokens
-        )
-        .filter(
-            t =>
-                t.patientId ===
-                token.patientId &&
-                t.status === "Completed"
-        );
-
-
-    document
-        .getElementById(
-            "consultDocuments"
-        )
-        .textContent =
-        docs.length;
-
-
-    document
-        .getElementById(
-            "consultPrescriptions"
-        )
-        .textContent =
-        prescriptions.length;
-
-
-    document
-        .getElementById(
-            "consultVisits"
-        )
-        .textContent =
-        visits.length;
 
 }
 
@@ -1230,9 +2143,11 @@ function selectPatientToken(
    COMPLETE CONSULTATION
 ========================================================= */
 
-function completeConsultation() {
+async function completeConsultation() {
 
-    if (!currentConsultationToken) {
+    if (
+        !currentConsultationToken
+    ) {
 
         showToast(
             "Select a patient first."
@@ -1243,1203 +2158,382 @@ function completeConsultation() {
     }
 
 
-    const tokens =
-        getData(
-            STORAGE_KEYS.tokens
-        );
+    try {
 
-
-    const token =
-        tokens.find(
-            t =>
-                t.id ===
+        const tokenRef =
+            doc(
+                db,
+                "tokens",
                 currentConsultationToken
-        );
-
-
-    if (!token) {
-
-        return;
-
-    }
-
-
-    token.status =
-        "Completed";
-
-
-    token.completedAt =
-        new Date().toISOString();
-
-
-    setData(
-        STORAGE_KEYS.tokens,
-        tokens
-    );
-
-
-    addNotification(
-
-        token.patientId,
-
-        "Consultation Completed",
-
-        "Your consultation with " +
-        token.doctorName +
-        " is completed."
-
-    );
-
-
-    showFollowupModal(
-        token
-    );
-
-
-    currentConsultationToken =
-        null;
-
-
-    document
-        .getElementById(
-            "doctorPatientDetails"
-        )
-        .classList.add(
-            "hidden"
-        );
-
-
-    document
-        .getElementById(
-            "doctorCurrentToken"
-        )
-        .textContent =
-        "Next Patient";
-
-
-    document
-        .getElementById(
-            "doctorCurrentPatient"
-        )
-        .textContent =
-        "Select next patient";
-
-
-    refreshAll();
-
-}
-
-
-/* =========================================================
-   FOLLOWUP MODAL
-========================================================= */
-
-function showFollowupModal(
-    token
-) {
-
-    openModal(`
-
-        <div class="eyebrow">
-            CONSULTATION COMPLETED
-        </div>
-
-        <h2 style="margin:10px 0;">
-            Follow-up
-        </h2>
-
-        <p class="muted">
-            ${escapeHtml(token.patientName)}
-        </p>
-
-        <div style="margin-top:20px;">
-
-            <div class="form-group">
-
-                <label>
-                    Follow-up
-                </label>
-
-                <select id="followupDays">
-
-                    <option value="0">
-                        No Follow-up
-                    </option>
-
-                    <option value="3">
-                        3 Days
-                    </option>
-
-                    <option value="7">
-                        7 Days
-                    </option>
-
-                    <option value="15">
-                        15 Days
-                    </option>
-
-                    <option value="30">
-                        30 Days
-                    </option>
-
-                </select>
-
-            </div>
-
-
-            <div class="form-group">
-
-                <label>
-                    Required Document
-                </label>
-
-                <select id="followupDocument">
-
-                    <option value="">
-                        None
-                    </option>
-
-                    <option>
-                        Blood Test Report
-                    </option>
-
-                    <option>
-                        Scan Report
-                    </option>
-
-                    <option>
-                        Prescription Review
-                    </option>
-
-                </select>
-
-            </div>
-
-
-            <button
-                class="primary-btn full"
-                onclick="saveFollowup('${token.id}')">
-
-                Save Follow-up
-
-            </button>
-
-        </div>
-
-    `);
-
-}
-
-
-/* =========================================================
-   SAVE FOLLOWUP
-========================================================= */
-
-function saveFollowup(
-    tokenId
-) {
-
-    const days =
-        Number(
-            document
-                .getElementById(
-                    "followupDays"
-                )
-                .value
-        );
-
-
-    const documentRequired =
-        document
-            .getElementById(
-                "followupDocument"
-            )
-            .value;
-
-
-    const tokens =
-        getData(
-            STORAGE_KEYS.tokens
-        );
-
-
-    const token =
-        tokens.find(
-            t =>
-                t.id === tokenId
-        );
-
-
-    if (!token) {
-
-        closeModal();
-
-        return;
-
-    }
-
-
-    if (days > 0) {
-
-        const followups =
-            getData(
-                STORAGE_KEYS.followups
             );
 
 
-        const followup = {
-
-            id:
-                "FU-" +
-                Date.now(),
-
-            patientId:
-                token.patientId,
-
-            patientName:
-                token.patientName,
-
-            doctorId:
-                token.doctorId,
-
-            doctorName:
-                token.doctorName,
-
-            date:
-                getDateAfterDays(days),
-
-            status:
-                "Pending",
-
-            requiredDocument:
-                documentRequired
-
-        };
+        const snapshot =
+            await getDoc(
+                tokenRef
+            );
 
 
-        followups.push(
-            followup
+        if (
+            !snapshot.exists()
+        ) {
+
+            showToast(
+                "Token not found."
+            );
+
+            return;
+
+        }
+
+
+        const token =
+            snapshot.data();
+
+
+        await updateDoc(
+            tokenRef,
+            {
+
+                status:
+                    "Completed",
+
+                completedAt:
+                    new Date()
+                        .toISOString()
+
+            }
         );
 
 
-        setData(
-            STORAGE_KEYS.followups,
-            followups
-        );
-
-
-        addNotification(
-
+        await createNotification(
             token.patientId,
-
-            "Follow-up Scheduled",
-
-            "Your follow-up is scheduled for " +
-            formatDate(followup.date)
-
+            "Consultation Completed",
+            "Your consultation with " +
+            token.doctorName +
+            " is completed."
         );
 
-    }
+
+        showToast(
+            "Consultation completed."
+        );
 
 
-    closeModal();
-
-    showToast(
-        "Consultation saved."
-    );
-
-    refreshAll();
-
-}
+        currentConsultationToken =
+            null;
 
 
-/* =========================================================
-   FOLLOWUP RENDER
-========================================================= */
-
-function renderFollowups() {
-
-    const container =
         document
             .getElementById(
-                "followupList"
-            );
-
-
-    const followups =
-        getData(
-            STORAGE_KEYS.followups
-        );
-
-
-    let filtered =
-        followups;
-
-
-    if (currentRole === "patient" &&
-        currentPatient) {
-
-        filtered =
-            followups.filter(
-                f =>
-                    f.patientId ===
-                    currentPatient.id
-            );
-
-    }
-
-
-    if (!filtered.length) {
-
-        container.innerHTML = `
-
-            <div class="panel">
-
-                <h3>
-                    No follow-ups
-                </h3>
-
-                <p class="muted">
-                    Nothing pending.
-                </p>
-
-            </div>
-
-        `;
-
-        return;
-
-    }
-
-
-    container.innerHTML =
-        filtered
-            .map(
-                followup => {
-
-                    const due =
-                        followup.date <=
-                        todayString();
-
-
-                    return `
-
-                    <div class="
-                        followup-card
-                        ${
-                            due
-                            ? "due"
-                            : "upcoming"
-                        }
-                    ">
-
-                        <h3>
-                            ${escapeHtml(
-                                followup.patientName
-                            )}
-                        </h3>
-
-                        <p>
-                            ${escapeHtml(
-                                followup.doctorName ||
-                                "Doctor"
-                            )}
-                        </p>
-
-                        <div class="followup-date">
-
-                            ${formatDate(
-                                followup.date
-                            )}
-
-                        </div>
-
-                        ${
-                            followup.requiredDocument
-                            ?
-
-                            `<p style="
-                                margin-top:10px;
-                                color:#28d7ff;
-                            ">
-                                📄 Required:
-                                ${escapeHtml(
-                                    followup.requiredDocument
-                                )}
-                            </p>`
-
-                            : ""
-                        }
-
-                    </div>
-
-                    `;
-
-                }
+                "doctorPatientDetails"
             )
-            .join("");
+            ?.classList
+            .add("hidden");
 
-}
 
-
-/* =========================================================
-   PATIENTS
-========================================================= */
-
-function renderPatients() {
-
-    const container =
         document
             .getElementById(
-                "patientsList"
-            );
-
-
-    const search =
-        (
-            document
-                .getElementById(
-                    "patientSearch"
-                )
-                ?.value || ""
-        )
-        .toLowerCase();
-
-
-    const patients =
-        getData(
-            STORAGE_KEYS.patients
-        );
-
-
-    const filtered =
-        patients.filter(
-            patient =>
-
-                patient.name
-                    .toLowerCase()
-                    .includes(search)
-
-                ||
-
-                patient.mobile
-                    .includes(search)
-
-        );
-
-
-    container.innerHTML =
-        filtered
-            .map(
-                patient => `
-
-                <div class="patient-row">
-
-                    <div>
-
-                        <strong>
-                            ${escapeHtml(
-                                patient.name
-                            )}
-                        </strong>
-
-                        <small>
-                            ${patient.id}
-                            •
-                            ${patient.mobile}
-                        </small>
-
-                    </div>
-
-                    <button
-                        class="secondary-btn"
-                        onclick="viewPatient(
-                            '${patient.id}'
-                        )">
-
-                        View
-
-                    </button>
-
-                </div>
-
-            `
+                "doctorCurrentToken"
             )
-            .join("");
+            .textContent =
+            "Next Patient";
+
+
+        document
+            .getElementById(
+                "doctorCurrentPatient"
+            )
+            .textContent =
+            "Select next patient";
+
+
+        refreshAll();
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+        showToast(
+            "Unable to complete consultation."
+        );
+
+    }
 
 }
 
 
 /* =========================================================
-   PATIENT VIEW
+   PATIENT TOKEN STATUS
 ========================================================= */
 
-function viewPatient(
-    patientId
-) {
-
-    const patients =
-        getData(
-            STORAGE_KEYS.patients
-        );
-
-
-    const patient =
-        patients.find(
-            p =>
-                p.id === patientId
-        );
-
-
-    if (!patient) {
-
-        return;
-
-    }
-
-
-    const tokens =
-        getData(
-            STORAGE_KEYS.tokens
-        )
-        .filter(
-            t =>
-                t.patientId === patientId
-        );
-
-
-    const documents =
-        getData(
-            STORAGE_KEYS.documents
-        )
-        .filter(
-            d =>
-                d.patientId === patientId
-        );
-
-
-    const prescriptions =
-        getData(
-            STORAGE_KEYS.prescriptions
-        )
-        .filter(
-            p =>
-                p.patientId === patientId
-        );
-
-
-    openModal(`
-
-        <div class="eyebrow">
-            PATIENT PROFILE
-        </div>
-
-        <h2 style="margin-top:8px;">
-            ${escapeHtml(
-                patient.name
-            )}
-        </h2>
-
-        <p class="muted">
-            ${patient.id}
-        </p>
-
-        <div class="history-grid"
-             style="margin-top:20px;">
-
-            <div>
-                <span>Age</span>
-                <strong>
-                    ${patient.age}
-                </strong>
-            </div>
-
-            <div>
-                <span>Visits</span>
-                <strong>
-                    ${tokens.length}
-                </strong>
-            </div>
-
-            <div>
-                <span>Documents</span>
-                <strong>
-                    ${documents.length}
-                </strong>
-            </div>
-
-        </div>
-
-        <h3 style="margin-top:20px;">
-            Patient Information
-        </h3>
-
-        <p class="muted"
-           style="margin-top:10px;">
-
-            Mobile:
-            ${patient.mobile}
-
-            <br>
-
-            Gender:
-            ${patient.gender}
-
-            <br>
-
-            Address:
-            ${patient.address || "Not provided"}
-
-        </p>
-
-        <button
-            class="primary-btn full"
-            style="margin-top:20px;"
-            onclick="closeModal()">
-
-            Close
-
-        </button>
-
-    `);
-
-}
-
-
-/* =========================================================
-   DOCUMENT UPLOAD
-========================================================= */
-
-function handleDocumentUpload(
-    event
-) {
-
-    const file =
-        event.target.files[0];
-
-
-    if (!file) {
-
-        return;
-
-    }
-
+async function renderPatientToken() {
 
     if (!currentPatient) {
-
-        showToast(
-            "Login as patient for demo upload."
-        );
-
-        event.target.value = "";
-
         return;
-
     }
 
 
-    const maxSize =
-        2 * 1024 * 1024;
+    try {
+
+        const tokenQuery =
+            query(
+                collection(
+                    db,
+                    "tokens"
+                ),
+                where(
+                    "patientUid",
+                    "==",
+                    currentPatient.uid
+                )
+            );
 
 
-    if (file.size > maxSize) {
+        const snapshot =
+            await getDocs(
+                tokenQuery
+            );
 
-        showToast(
-            "Demo limit: 2 MB."
+
+        const tokens = [];
+
+
+        snapshot.forEach(
+            item => {
+
+                tokens.push({
+
+                    id:
+                        item.id,
+
+                    ...item.data()
+
+                });
+
+            }
         );
 
-        event.target.value = "";
 
-        return;
+        tokens.sort(
+            (a, b) => {
+
+                return (
+                    new Date(
+                        b.bookedAt
+                    ) -
+                    new Date(
+                        a.bookedAt
+                    )
+                );
+
+            }
+        );
+
+
+        const activeToken =
+            tokens[0];
+
+
+        const numberElement =
+            document.getElementById(
+                "patientTokenNumber"
+            );
+
+
+        const statusElement =
+            document.getElementById(
+                "patientTokenStatus"
+            );
+
+
+        if (!activeToken) {
+
+            if (numberElement) {
+
+                numberElement.textContent =
+                    "--";
+
+            }
+
+            if (statusElement) {
+
+                statusElement.textContent =
+                    "No token booked";
+
+            }
+
+            return;
+
+        }
+
+
+        if (numberElement) {
+
+            numberElement.textContent =
+                formatToken(
+                    activeToken.number
+                );
+
+        }
+
+
+        if (statusElement) {
+
+            statusElement.textContent =
+                activeToken.status +
+                " • " +
+                formatDate(
+                    activeToken.visitDate
+                );
+
+        }
+
+
+        await calculatePatientQueue(
+            activeToken
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Patient token:",
+            error
+        );
 
     }
-
-
-    const documents =
-        getData(
-            STORAGE_KEYS.documents
-        );
-
-
-    const documentRecord = {
-
-        id:
-            "DOC-" +
-            Date.now(),
-
-        patientId:
-            currentPatient.id,
-
-        patientName:
-            currentPatient.name,
-
-        fileName:
-            file.name,
-
-        fileType:
-            file.type,
-
-        size:
-            file.size,
-
-        date:
-            todayString(),
-
-        type:
-            detectDocumentType(
-                file.name
-            )
-
-    };
-
-
-    documents.push(
-        documentRecord
-    );
-
-
-    setData(
-        STORAGE_KEYS.documents,
-        documents
-    );
-
-
-    addNotification(
-
-        currentPatient.id,
-
-        "Document Uploaded",
-
-        file.name +
-        " added to your records."
-
-    );
-
-
-    event.target.value = "";
-
-
-    showToast(
-        "Document added."
-    );
-
-
-    refreshAll();
 
 }
 
 
 /* =========================================================
-   DOCUMENT TYPE
+   PATIENT QUEUE / WAIT TIME
 ========================================================= */
 
-function detectDocumentType(
-    fileName
+async function calculatePatientQueue(
+    activeToken
 ) {
 
-    const name =
-        fileName.toLowerCase();
+    try {
 
-
-    if (
-        name.includes("blood") ||
-        name.includes("lab")
-    ) {
-
-        return "Lab Report";
-
-    }
-
-
-    if (
-        name.includes("scan") ||
-        name.includes("xray") ||
-        name.includes("x-ray")
-    ) {
-
-        return "Scan Report";
-
-    }
-
-
-    if (
-        name.includes("prescription")
-    ) {
-
-        return "Prescription";
-
-    }
-
-
-    return "Medical Document";
-
-}
-
-
-/* =========================================================
-   RENDER DOCUMENTS
-========================================================= */
-
-function renderDocuments() {
-
-    const container =
-        document
-            .getElementById(
-                "documentsList"
+        const queue =
+            await getDoctorQueue(
+                activeToken.doctorId,
+                activeToken.visitDate
             );
 
 
-    let documents =
-        getData(
-            STORAGE_KEYS.documents
+        const ahead =
+            queue.filter(
+                item => {
+
+                    return (
+                        Number(
+                            item.number
+                        ) <
+                        Number(
+                            activeToken.number
+                        )
+                    );
+
+                }
+            );
+
+
+        const current =
+            queue.length
+                ? queue[0]
+                : null;
+
+
+        const currentElement =
+            document.getElementById(
+                "patientCurrentToken"
+            );
+
+
+        const aheadElement =
+            document.getElementById(
+                "patientAhead"
+            );
+
+
+        const waitElement =
+            document.getElementById(
+                "patientWaitTime"
+            );
+
+
+        if (currentElement) {
+
+            currentElement.textContent =
+                current
+                    ? formatToken(
+                        current.number
+                    )
+                    : "--";
+
+        }
+
+
+        if (aheadElement) {
+
+            aheadElement.textContent =
+                ahead.length;
+
+        }
+
+
+        /*
+           Initial demo average:
+           8 minutes per patient.
+
+           Later this will be calculated
+           from actual completed consultations.
+        */
+
+        const averageMinutes =
+            8;
+
+
+        if (waitElement) {
+
+            waitElement.textContent =
+                "~ " +
+                (
+                    ahead.length *
+                    averageMinutes
+                ) +
+                " mins";
+
+        }
+
+
+        if (
+            ahead.length <= 2 &&
+            activeToken.status ===
+            "Waiting"
+        ) {
+
+            await createNotification(
+                activeToken.patientId,
+                "Token Approaching",
+                "Your token is approaching. Please be ready."
+            );
+
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            error
         );
 
-
-    if (
-        currentRole === "patient" &&
-        currentPatient
-    ) {
-
-        documents =
-            documents.filter(
-                d =>
-                    d.patientId ===
-                    currentPatient.id
-            );
-
     }
-
-
-    if (!documents.length) {
-
-        container.innerHTML = `
-
-            <div class="panel">
-
-                <h3>
-                    No documents
-                </h3>
-
-                <p class="muted">
-                    Documents will appear here.
-                </p>
-
-            </div>
-
-        `;
-
-        return;
-
-    }
-
-
-    container.innerHTML =
-        documents
-            .map(
-                document => `
-
-                <div class="document-row">
-
-                    <div class="document-info">
-
-                        <div class="document-icon">
-                            📄
-                        </div>
-
-                        <div>
-
-                            <strong>
-                                ${escapeHtml(
-                                    document.fileName
-                                )}
-                            </strong>
-
-                            <small class="muted">
-
-                                ${
-                                    escapeHtml(
-                                        document.type
-                                    )
-                                }
-
-                                •
-
-                                ${
-                                    formatDate(
-                                        document.date
-                                    )
-                                }
-
-                            </small>
-
-                        </div>
-
-                    </div>
-
-                    <span class="status-pill">
-                        Saved
-                    </span>
-
-                </div>
-
-            `
-            )
-            .join("");
-
-}
-
-
-/* =========================================================
-   PRESCRIPTIONS
-========================================================= */
-
-function renderPrescriptions() {
-
-    const container =
-        document
-            .getElementById(
-                "prescriptionList"
-            );
-
-
-    let prescriptions =
-        getData(
-            STORAGE_KEYS.prescriptions
-        );
-
-
-    if (
-        currentRole === "patient" &&
-        currentPatient
-    ) {
-
-        prescriptions =
-            prescriptions.filter(
-                p =>
-                    p.patientId ===
-                    currentPatient.id
-            );
-
-    }
-
-
-    if (!prescriptions.length) {
-
-        container.innerHTML = `
-
-            <div class="panel">
-
-                <h3>
-                    No prescriptions
-                </h3>
-
-            </div>
-
-        `;
-
-        return;
-
-    }
-
-
-    container.innerHTML =
-        prescriptions
-            .map(
-                prescription => `
-
-                <div class="prescription-card">
-
-                    <div class="eyebrow">
-                        PRESCRIPTION
-                    </div>
-
-                    <h3 style="margin-top:7px;">
-                        ${escapeHtml(
-                            prescription.doctor
-                        )}
-                    </h3>
-
-                    <div class="date">
-                        ${formatDate(
-                            prescription.date
-                        )}
-                    </div>
-
-                    <div style="margin-top:15px;">
-
-                        ${
-                            prescription.medicines
-                                .map(
-                                    medicine => `
-
-                                    <div class="medicine">
-
-                                        <strong>
-                                            ${escapeHtml(
-                                                medicine.name
-                                            )}
-                                        </strong>
-
-                                        <span>
-                                            ${escapeHtml(
-                                                medicine.dosage
-                                            )}
-
-                                            •
-                                            
-                                            ${escapeHtml(
-                                                medicine.instruction
-                                            )}
-
-                                            •
-                                            
-                                            ${medicine.days}
-                                            Days
-                                        </span>
-
-                                    </div>
-
-                                `
-                                )
-                                .join("")
-                        }
-
-                    </div>
-
-                    <p class="muted"
-                       style="margin-top:15px;">
-
-                        ${
-                            escapeHtml(
-                                prescription.note || ""
-                            )
-                        }
-
-                    </p>
-
-                </div>
-
-            `
-            )
-            .join("");
-
-}
-
-
-/* =========================================================
-   TOKEN RENDER
-========================================================= */
-
-function renderTokens() {
-
-    const container =
-        document
-            .getElementById(
-                "allTokensList"
-            );
-
-
-    let tokens =
-        getData(
-            STORAGE_KEYS.tokens
-        )
-        .filter(
-            token =>
-                token.date ===
-                todayString()
-        );
-
-
-    if (
-        currentRole === "patient" &&
-        currentPatient
-    ) {
-
-        tokens =
-            tokens.filter(
-                token =>
-                    token.patientId ===
-                    currentPatient.id
-            );
-
-    }
-
-
-    tokens.sort(
-        (a,b) =>
-            Number(a.number) -
-            Number(b.number)
-    );
-
-
-    container.innerHTML =
-        tokens
-            .map(
-                token => `
-
-                <div class="token-table-row">
-
-                    <div class="token-number">
-                        ${formatToken(
-                            token.number
-                        )}
-                    </div>
-
-                    <div>
-                        <strong>
-                            ${escapeHtml(
-                                token.patientName
-                            )}
-                        </strong>
-
-                        <small class="muted">
-                            ${escapeHtml(
-                                token.doctorName
-                            )}
-                        </small>
-
-                    </div>
-
-                    <div>
-                        ${escapeHtml(
-                            token.reason
-                        )}
-                    </div>
-
-                    <div>
-                        ${token.status}
-                    </div>
-
-                    <div>
-
-                        ${
-                            currentRole === "doctor"
-
-                            ?
-
-                            `<button
-                                class="secondary-btn"
-                                onclick="selectPatientToken(
-                                    '${token.id}'
-                                )">
-
-                                Open
-
-                            </button>`
-
-                            :
-
-                            ""
-
-                        }
-
-                    </div>
-
-                </div>
-
-            `
-            )
-            .join("");
 
 }
 
@@ -2448,25 +2542,38 @@ function renderTokens() {
    DOCTOR QUEUE RENDER
 ========================================================= */
 
-function renderDoctorQueue() {
+async function renderDoctorQueue() {
 
     const container =
-        document
-            .getElementById(
-                "doctorQueue"
-            );
+        document.getElementById(
+            "doctorQueue"
+        );
+
+
+    if (!container) {
+        return;
+    }
 
 
     const queue =
-        getDoctorQueue();
+        await getDoctorQueue(
+            currentDoctor,
+            todayString()
+        );
 
 
-    document
-        .getElementById(
+    const count =
+        document.getElementById(
             "doctorQueueCount"
-        )
-        .textContent =
-        queue.length;
+        );
+
+
+    if (count) {
+
+        count.textContent =
+            queue.length;
+
+    }
 
 
     if (!queue.length) {
@@ -2505,15 +2612,20 @@ function renderDoctorQueue() {
 
                     </div>
 
+
                     <div>
 
                         <strong>
+
                             ${escapeHtml(
                                 token.patientName
                             )}
+
                         </strong>
 
+
                         <small>
+
                             ${escapeHtml(
                                 token.reason
                             )}
@@ -2528,11 +2640,10 @@ function renderDoctorQueue() {
 
                     </div>
 
+
                     <button
                         class="secondary-btn"
-                        onclick="selectPatientToken(
-                            '${token.id}'
-                        )">
+                        onclick="selectPatientToken('${token.id}')">
 
                         Select
 
@@ -2548,235 +2659,178 @@ function renderDoctorQueue() {
 
 
 /* =========================================================
-   PATIENT TOKEN STATUS
+   TOKEN LIST
 ========================================================= */
 
-function renderPatientToken() {
+async function renderTokens() {
 
-    if (!currentPatient) {
-
-        return;
-
-    }
-
-
-    const tokens =
-        getData(
-            STORAGE_KEYS.tokens
+    const container =
+        document.getElementById(
+            "allTokensList"
         );
 
 
-    const activeToken =
-        tokens
-            .filter(
-                token =>
-                    token.patientId ===
-                    currentPatient.id &&
-
-                    token.date ===
-                    todayString() &&
-
-                    (
-                        token.status ===
-                        "Waiting"
-
-                        ||
-
-                        token.status ===
-                        "Skipped"
-
-                        ||
-
-                        token.status ===
-                        "Completed"
-                    )
-            )
-            .sort(
-                (a,b) =>
-                    new Date(b.createdAt) -
-                    new Date(a.createdAt)
-            )[0];
-
-
-    if (!activeToken) {
-
-        document
-            .getElementById(
-                "patientTokenNumber"
-            )
-            .textContent =
-            "--";
-
-        document
-            .getElementById(
-                "patientTokenStatus"
-            )
-            .textContent =
-            "No active token";
-
+    if (!container) {
         return;
-
     }
 
 
-    document
-        .getElementById(
-            "patientTokenNumber"
-        )
-        .textContent =
-        formatToken(
-            activeToken.number
-        );
+    let tokens = [];
 
 
-    document
-        .getElementById(
-            "patientTokenStatus"
-        )
-        .textContent =
-        activeToken.status;
+    try {
 
-
-    const doctorTokens =
-        tokens
-            .filter(
-                token =>
-                    token.date ===
-                    todayString() &&
-
-                    token.doctorId ===
-                    activeToken.doctorId
+        const snapshot =
+            await getDocs(
+                collection(
+                    db,
+                    "tokens"
+                )
             );
 
 
-    const current =
-        getCurrentDoctorToken(
-            activeToken.doctorId
+        snapshot.forEach(
+            item => {
+
+                tokens.push({
+
+                    id:
+                        item.id,
+
+                    ...item.data()
+
+                });
+
+            }
         );
 
 
-    const ahead =
-        doctorTokens.filter(
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+        return;
+
+    }
+
+
+    tokens =
+        tokens.filter(
             token =>
-                token.status === "Waiting" &&
-
-                Number(token.number) <
-                Number(activeToken.number)
-        ).length;
-
-
-    document
-        .getElementById(
-            "patientCurrentToken"
-        )
-        .textContent =
-        current
-        ? formatToken(current.number)
-        : "--";
-
-
-    document
-        .getElementById(
-            "patientAhead"
-        )
-        .textContent =
-        ahead;
-
-
-    const average =
-        8;
-
-
-    document
-        .getElementById(
-            "patientWaitTime"
-        )
-        .textContent =
-        "~ " +
-        Math.max(
-            0,
-            ahead * average
-        ) +
-        " mins";
+                token.visitDate ===
+                todayString()
+        );
 
 
     if (
-        ahead <= 2 &&
-        activeToken.status === "Waiting"
+        currentRole ===
+        "patient" &&
+        currentPatient
     ) {
 
-        addNotificationOnce(
-
-            activeToken.patientId,
-
-            "Token Approaching",
-
-            "Your token is approaching. Please be ready."
-
-        );
+        tokens =
+            tokens.filter(
+                token =>
+                    token.patientUid ===
+                    currentPatient.uid
+            );
 
     }
 
-}
+
+    tokens.sort(
+        (a, b) =>
+            Number(a.number) -
+            Number(b.number)
+    );
 
 
-/* =========================================================
-   CURRENT DOCTOR TOKEN
-========================================================= */
-
-function getCurrentDoctorToken(
-    doctorId
-) {
-
-    const tokens =
-        getData(
-            STORAGE_KEYS.tokens
-        );
-
-
-    const completed =
+    container.innerHTML =
         tokens
-            .filter(
-                token =>
-                    token.date ===
-                    todayString() &&
+            .map(
+                token => `
 
-                    token.doctorId ===
-                    doctorId &&
+                <div class="token-table-row">
 
-                    token.status ===
-                    "Completed"
-            );
+                    <div class="token-number">
+
+                        ${formatToken(
+                            token.number
+                        )}
+
+                    </div>
 
 
-    const waiting =
-        tokens
-            .filter(
-                token =>
-                    token.date ===
-                    todayString() &&
+                    <div>
 
-                    token.doctorId ===
-                    doctorId &&
+                        <strong>
 
-                    token.status ===
-                    "Waiting"
+                            ${escapeHtml(
+                                token.patientName
+                            )}
+
+                        </strong>
+
+                        <small class="muted">
+
+                            ${escapeHtml(
+                                token.doctorName
+                            )}
+
+                        </small>
+
+                    </div>
+
+
+                    <div>
+
+                        ${escapeHtml(
+                            token.reason
+                        )}
+
+                    </div>
+
+
+                    <div>
+
+                        ${escapeHtml(
+                            token.status
+                        )}
+
+                    </div>
+
+
+                    <div>
+
+                        ${
+                            currentRole ===
+                            "doctor"
+
+                            ?
+
+                            `<button
+                                class="secondary-btn"
+                                onclick="selectPatientToken('${token.id}')">
+
+                                Open
+
+                            </button>`
+
+                            :
+
+                            ""
+
+                        }
+
+                    </div>
+
+                </div>
+
+            `
             )
-            .sort(
-                (a,b) =>
-                    Number(a.number) -
-                    Number(b.number)
-            );
-
-
-    if (!waiting.length) {
-
-        return null;
-
-    }
-
-
-    return waiting[0];
+            .join("");
 
 }
 
@@ -2785,41 +2839,113 @@ function getCurrentDoctorToken(
    DOCTOR STATUS
 ========================================================= */
 
-function renderDoctorStatus() {
+async function toggleDoctorAvailability() {
 
-    const status =
-        getData(
-            STORAGE_KEYS.doctorStatus,
-            {}
-        );
+    try {
 
-
-    const dashboard =
-        document
-            .getElementById(
-                "doctorStatusBox"
+        const ref =
+            doc(
+                db,
+                "doctorStatus",
+                currentDoctor
             );
 
 
-    if (!dashboard) {
+        const snapshot =
+            await getDoc(
+                ref
+            );
 
-        return;
+
+        const current =
+            snapshot.exists()
+                ? snapshot.data()
+                    .available === true
+                : false;
+
+
+        await setDoc(
+            ref,
+            {
+
+                doctorId:
+                    currentDoctor,
+
+                available:
+                    !current,
+
+                updatedAt:
+                    new Date()
+                        .toISOString()
+
+            },
+            {
+                merge:
+                    true
+            }
+        );
+
+
+        showToast(
+            !current
+                ? "You are now available."
+                : "Doctor marked unavailable."
+        );
+
+
+        renderDoctorStatus();
+
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+        showToast(
+            "Unable to update doctor status."
+        );
 
     }
+
+}
+
+
+/* =========================================================
+   RENDER DOCTOR STATUS
+========================================================= */
+
+async function renderDoctorStatus() {
+
+    const dashboard =
+        document.getElementById(
+            "doctorStatusBox"
+        );
+
+
+    if (!dashboard) {
+        return;
+    }
+
+
+    const available =
+        await getDoctorAvailability(
+            currentDoctor
+        );
 
 
     dashboard.innerHTML = `
 
         <span class="${
-            status.doctor1
-            ? "online"
-            : "offline"
+            available
+                ? "online"
+                : "offline"
         }">
 
             ${
-                status.doctor1
-                ? "● Available"
-                : "● Not Available"
+                available
+                    ? "● Available"
+                    : "● Not Available"
             }
 
         </span>
@@ -2828,27 +2954,25 @@ function renderDoctorStatus() {
 
 
     const button =
-        document
-            .getElementById(
-                "doctorAvailableBtn"
-            );
+        document.getElementById(
+            "doctorAvailableBtn"
+        );
 
 
     if (button) {
 
         button.textContent =
-            status.doctor1
-            ? "🟢 Available"
-            : "🔴 Mark Available";
+            available
+                ? "🟢 Available"
+                : "🔴 Mark Available";
 
     }
 
 
     const staff =
-        document
-            .getElementById(
-                "staffDoctorStatus"
-            );
+        document.getElementById(
+            "staffDoctorStatus"
+        );
 
 
     if (staff) {
@@ -2870,15 +2994,15 @@ function renderDoctorStatus() {
                 </div>
 
                 <span class="${
-                    status.doctor1
-                    ? "online"
-                    : "offline"
+                    available
+                        ? "online"
+                        : "offline"
                 }">
 
                     ${
-                        status.doctor1
-                        ? "● Available"
-                        : "● Offline"
+                        available
+                            ? "● Available"
+                            : "● Offline"
                     }
 
                 </span>
@@ -2900,17 +3024,9 @@ function renderDoctorStatus() {
 
                 </div>
 
-                <span class="${
-                    status.doctor2
-                    ? "online"
-                    : "offline"
-                }">
+                <span class="offline">
 
-                    ${
-                        status.doctor2
-                        ? "● Available"
-                        : "● Offline"
-                    }
+                    ● Offline
 
                 </span>
 
@@ -2927,113 +3043,478 @@ function renderDoctorStatus() {
    STATS
 ========================================================= */
 
-function renderStats() {
+async function renderStats() {
 
-    const patients =
-        getData(
-            STORAGE_KEYS.patients
-        );
+    try {
 
-
-    const tokens =
-        getData(
-            STORAGE_KEYS.tokens
-        )
-        .filter(
-            token =>
-                token.date ===
-                todayString()
-        );
-
-
-    const completed =
-        tokens.filter(
-            token =>
-                token.status ===
-                "Completed"
-        );
-
-
-    const followups =
-        getData(
-            STORAGE_KEYS.followups
-        )
-        .filter(
-            f =>
-                f.status ===
-                "Pending"
-        );
-
-
-    document
-        .getElementById(
-            "statPatients"
-        )
-        .textContent =
-        patients.length;
-
-
-    document
-        .getElementById(
-            "statTokens"
-        )
-        .textContent =
-        tokens.length;
-
-
-    document
-        .getElementById(
-            "statCompleted"
-        )
-        .textContent =
-        completed.length;
-
-
-    document
-        .getElementById(
-            "statFollowups"
-        )
-        .textContent =
-        followups.length;
-
-
-    if (currentPatient) {
-
-        const pFollowups =
-            followups.filter(
-                f =>
-                    f.patientId ===
-                    currentPatient.id
+        const patientSnapshot =
+            await getDocs(
+                collection(
+                    db,
+                    "patients"
+                )
             );
 
 
-        const pDocs =
-            getData(
-                STORAGE_KEYS.documents
-            )
-            .filter(
-                d =>
-                    d.patientId ===
-                    currentPatient.id
+        const tokenSnapshot =
+            await getDocs(
+                collection(
+                    db,
+                    "tokens"
+                )
             );
 
 
-        document
-            .getElementById(
-                "patientFollowupCount"
-            )
-            .textContent =
-            pFollowups.length +
-            " pending";
+        let todayTokens =
+            [];
 
 
-        document
-            .getElementById(
-                "patientDocumentCount"
+        tokenSnapshot.forEach(
+            item => {
+
+                const token =
+                    item.data();
+
+
+                if (
+                    token.visitDate ===
+                    todayString()
+                ) {
+
+                    todayTokens.push(
+                        token
+                    );
+
+                }
+
+            }
+        );
+
+
+        const completed =
+            todayTokens.filter(
+                token =>
+                    token.status ===
+                    "Completed"
+            );
+
+
+        const patientElement =
+            document.getElementById(
+                "statPatients"
+            );
+
+
+        const tokenElement =
+            document.getElementById(
+                "statTokens"
+            );
+
+
+        const completedElement =
+            document.getElementById(
+                "statCompleted"
+            );
+
+
+        if (patientElement) {
+
+            patientElement.textContent =
+                patientSnapshot.size;
+
+        }
+
+
+        if (tokenElement) {
+
+            tokenElement.textContent =
+                todayTokens.length;
+
+        }
+
+
+        if (completedElement) {
+
+            completedElement.textContent =
+                completed.length;
+
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "Stats error:",
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   PATIENTS
+========================================================= */
+
+async function renderPatients() {
+
+    const container =
+        document.getElementById(
+            "patientsList"
+        );
+
+
+    if (!container) {
+        return;
+    }
+
+
+    try {
+
+        const snapshot =
+            await getDocs(
+                collection(
+                    db,
+                    "patients"
+                )
+            );
+
+
+        let patients = [];
+
+
+        snapshot.forEach(
+            item => {
+
+                patients.push(
+                    item.data()
+                );
+
+            }
+        );
+
+
+        const search =
+            (
+                document
+                    .getElementById(
+                        "patientSearch"
+                    )
+                    ?.value ||
+                ""
             )
-            .textContent =
-            pDocs.length +
-            " documents";
+            .toLowerCase();
+
+
+        patients =
+            patients.filter(
+                patient => {
+
+                    return (
+                        (
+                            patient.name ||
+                            ""
+                        )
+                        .toLowerCase()
+                        .includes(search)
+
+                        ||
+
+                        (
+                            patient.mobile ||
+                            ""
+                        )
+                        .includes(search)
+
+                    );
+
+                }
+            );
+
+
+        container.innerHTML =
+            patients
+                .map(
+                    patient => `
+
+                    <div class="patient-row">
+
+                        <div>
+
+                            <strong>
+
+                                ${escapeHtml(
+                                    patient.name
+                                )}
+
+                            </strong>
+
+                            <small>
+
+                                ${
+                                    patient.patientId ||
+                                    "--"
+                                }
+
+                                •
+
+                                ${
+                                    patient.mobile ||
+                                    "--"
+                                }
+
+                            </small>
+
+                        </div>
+
+
+                        <button
+                            class="secondary-btn"
+                            onclick="viewPatient('${patient.uid}')">
+
+                            View
+
+                        </button>
+
+                    </div>
+
+                `
+                )
+                .join("");
+
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   PATIENT VIEW
+========================================================= */
+
+async function viewPatient(
+    uid
+) {
+
+    try {
+
+        const snapshot =
+            await getDoc(
+                doc(
+                    db,
+                    "patients",
+                    uid
+                )
+            );
+
+
+        if (
+            !snapshot.exists()
+        ) {
+
+            return;
+
+        }
+
+
+        const patient =
+            snapshot.data();
+
+
+        openModal(`
+
+            <div class="eyebrow">
+                PATIENT PROFILE
+            </div>
+
+
+            <h2 style="margin-top:8px;">
+
+                ${escapeHtml(
+                    patient.name
+                )}
+
+            </h2>
+
+
+            <p class="muted">
+
+                ${
+                    patient.patientId ||
+                    "--"
+                }
+
+            </p>
+
+
+            <div class="history-grid"
+                 style="margin-top:20px;">
+
+                <div>
+
+                    <span>
+                        Age
+                    </span>
+
+                    <strong>
+                        ${
+                            patient.age ||
+                            "--"
+                        }
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <span>
+                        Gender
+                    </span>
+
+                    <strong>
+                        ${
+                            patient.gender ||
+                            "--"
+                        }
+                    </strong>
+
+                </div>
+
+
+                <div>
+
+                    <span>
+                        Mobile
+                    </span>
+
+                    <strong>
+                        ${
+                            patient.mobile ||
+                            "--"
+                        }
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            <h3 style="margin-top:20px;">
+
+                Patient Information
+
+            </h3>
+
+
+            <p class="muted"
+               style="margin-top:10px;">
+
+                Email:
+                ${
+                    escapeHtml(
+                        patient.email ||
+                        "--"
+                    )
+                }
+
+                <br>
+
+                Address:
+                ${
+                    escapeHtml(
+                        patient.address ||
+                        "Not provided"
+                    )
+                }
+
+            </p>
+
+
+            <button
+                class="primary-btn full"
+                style="margin-top:20px;"
+                onclick="closeModal()">
+
+                Close
+
+            </button>
+
+        `);
+
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   MODAL
+========================================================= */
+
+function openModal(
+    content
+) {
+
+    const modal =
+        document.getElementById(
+            "modal"
+        );
+
+
+    const contentBox =
+        document.getElementById(
+            "modalContent"
+        );
+
+
+    if (
+        !modal ||
+        !contentBox
+    ) {
+
+        return;
+
+    }
+
+
+    contentBox.innerHTML =
+        content;
+
+
+    modal.classList.add(
+        "show"
+    );
+
+}
+
+
+function closeModal() {
+
+    const modal =
+        document.getElementById(
+            "modal"
+        );
+
+
+    if (modal) {
+
+        modal.classList.remove(
+            "show"
+        );
 
     }
 
@@ -3044,474 +3525,346 @@ function renderStats() {
    NOTIFICATIONS
 ========================================================= */
 
-function addNotification(
+async function createNotification(
     patientId,
     title,
     message
 ) {
 
-    const notifications =
-        getData(
-            STORAGE_KEYS.notifications
+    if (!patientId) {
+        return;
+    }
+
+
+    try {
+
+        await addDoc(
+            collection(
+                db,
+                "notifications"
+            ),
+            {
+
+                patientId,
+
+                title,
+
+                message,
+
+                createdAt:
+                    new Date()
+                        .toISOString(),
+
+                read:
+                    false
+
+            }
         );
 
+    } catch (error) {
 
-    notifications.push({
+        console.error(
+            "Notification error:",
+            error
+        );
 
-        id:
-            "N-" +
-            Date.now() +
-            Math.random(),
-
-        patientId,
-
-        title,
-
-        message,
-
-        date:
-            new Date().toISOString(),
-
-        read:
-            false
-
-    });
-
-
-    setData(
-        STORAGE_KEYS.notifications,
-        notifications
-    );
-
-
-    renderNotificationBadge();
+    }
 
 }
 
 
-function addNotificationOnce(
-    patientId,
-    title,
-    message
-) {
+async function showNotifications() {
 
-    const notifications =
-        getData(
-            STORAGE_KEYS.notifications
+    if (
+        !currentPatient
+    ) {
+
+        return;
+
+    }
+
+
+    try {
+
+        const notificationQuery =
+            query(
+                collection(
+                    db,
+                    "notifications"
+                ),
+                where(
+                    "patientId",
+                    "==",
+                    currentPatient.patientId
+                )
+            );
+
+
+        const snapshot =
+            await getDocs(
+                notificationQuery
+            );
+
+
+        const notifications = [];
+
+
+        snapshot.forEach(
+            item => {
+
+                notifications.push({
+
+                    id:
+                        item.id,
+
+                    ...item.data()
+
+                });
+
+            }
         );
 
 
-    const exists =
-        notifications.some(
-            n =>
-                n.patientId ===
-                patientId &&
-
-                n.title ===
-                title &&
-
-                n.date.startsWith(
-                    todayString()
+        notifications.sort(
+            (a, b) =>
+                new Date(
+                    b.createdAt
+                ) -
+                new Date(
+                    a.createdAt
                 )
         );
 
 
-    if (!exists) {
+        openModal(`
 
-        addNotification(
-            patientId,
-            title,
-            message
-        );
-
-    }
-
-}
+            <div class="eyebrow">
+                NOTIFICATIONS
+            </div>
 
 
-/* =========================================================
-   NOTIFICATION BADGE
-========================================================= */
-
-function renderNotificationBadge() {
-
-    const notifications =
-        getData(
-            STORAGE_KEYS.notifications
-        );
+            <h2 style="margin:8px 0 20px;">
+                Notifications
+            </h2>
 
 
-    let unread =
-        notifications.filter(
-            n =>
-                !n.read
-        );
+            ${
+                notifications.length
+
+                ?
+
+                notifications
+                    .slice(0, 20)
+                    .map(
+                        notification => `
+
+                        <div style="
+                            padding:14px 0;
+                            border-bottom:
+                            1px solid
+                            rgba(255,255,255,0.08);
+                        ">
+
+                            <strong>
+
+                                ${escapeHtml(
+                                    notification.title
+                                )}
+
+                            </strong>
 
 
-    if (
-        currentRole === "patient" &&
-        currentPatient
-    ) {
+                            <p class="muted"
+                               style="margin-top:5px;">
 
-        unread =
-            unread.filter(
-                n =>
-                    n.patientId ===
-                    currentPatient.id
-            );
+                                ${escapeHtml(
+                                    notification.message
+                                )}
 
-    }
+                            </p>
 
+                        </div>
 
-    document
-        .getElementById(
-            "notificationBadge"
-        )
-        .textContent =
-        unread.length;
+                    `
+                    )
+                    .join("")
 
-}
+                :
 
-
-/* =========================================================
-   SHOW NOTIFICATIONS
-========================================================= */
-
-function showNotifications() {
-
-    let notifications =
-        getData(
-            STORAGE_KEYS.notifications
-        );
-
-
-    if (
-        currentRole === "patient" &&
-        currentPatient
-    ) {
-
-        notifications =
-            notifications.filter(
-                n =>
-                    n.patientId ===
-                    currentPatient.id
-            );
-
-    }
-
-
-    notifications =
-        notifications
-            .sort(
-                (a,b) =>
-                    new Date(b.date) -
-                    new Date(a.date)
-            )
-            .slice(0,20);
-
-
-    openModal(`
-
-        <div class="eyebrow">
-            NOTIFICATIONS
-        </div>
-
-        <h2 style="margin:8px 0 20px;">
-            Notifications
-        </h2>
-
-        ${
-            notifications.length
-
-            ?
-
-            notifications
-                .map(
-                    n => `
-
-                    <div style="
-                        padding:14px 0;
-                        border-bottom:
-                        1px solid rgba(255,255,255,0.08);
-                    ">
-
-                        <strong>
-                            ${escapeHtml(
-                                n.title
-                            )}
-                        </strong>
-
-                        <p class="muted"
-                           style="margin-top:5px;">
-
-                            ${escapeHtml(
-                                n.message
-                            )}
-
-                        </p>
-
-                    </div>
-
-                `
-                )
-                .join("")
-
-            :
-
-            `<p class="muted">
-                No notifications.
-            </p>`
-
-        }
-
-    `);
-
-
-    const all =
-        getData(
-            STORAGE_KEYS.notifications
-        );
-
-
-    all.forEach(
-        n => {
-
-            if (
-                currentRole === "patient" &&
-                currentPatient &&
-                n.patientId ===
-                currentPatient.id
-            ) {
-
-                n.read = true;
+                `<p class="muted">
+                    No notifications.
+                </p>`
 
             }
 
-        }
-    );
+        `);
 
 
-    setData(
-        STORAGE_KEYS.notifications,
-        all
-    );
+    } catch (error) {
 
+        console.error(
+            error
+        );
 
-    renderNotificationBadge();
+    }
 
 }
 
 
 /* =========================================================
-   MODAL
+   FOLLOWUPS
 ========================================================= */
 
-function openModal(content) {
+async function renderFollowups() {
 
-    document
-        .getElementById(
-            "modalContent"
-        )
-        .innerHTML =
-        content;
-
-
-    document
-        .getElementById(
-            "modal"
-        )
-        .classList.add(
-            "show"
+    const container =
+        document.getElementById(
+            "followupList"
         );
 
-}
+
+    if (!container) {
+        return;
+    }
 
 
-function closeModal() {
+    container.innerHTML = `
 
-    document
-        .getElementById(
-            "modal"
-        )
-        .classList.remove(
-            "show"
-        );
+        <div class="panel">
+
+            <h3>
+                Follow-up Module
+            </h3>
+
+            <p class="muted">
+                Firebase follow-up integration will be connected after the core token workflow is verified.
+            </p>
+
+        </div>
+
+    `;
 
 }
 
 
 /* =========================================================
-   TOAST
+   DOCUMENTS
 ========================================================= */
 
-let toastTimer = null;
+async function renderDocuments() {
 
-
-function showToast(
-    message
-) {
-
-    const toast =
-        document
-            .getElementById(
-                "toast"
-            );
-
-
-    toast.textContent =
-        message;
-
-
-    toast.classList.add(
-        "show"
-    );
-
-
-    clearTimeout(
-        toastTimer
-    );
-
-
-    toastTimer =
-        setTimeout(
-            () => {
-
-                toast.classList.remove(
-                    "show"
-                );
-
-            },
-            2800
+    const container =
+        document.getElementById(
+            "documentsList"
         );
+
+
+    if (!container) {
+        return;
+    }
+
+
+    container.innerHTML = `
+
+        <div class="panel">
+
+            <h3>
+                Digital Documents
+            </h3>
+
+            <p class="muted">
+                Firebase Storage integration will be connected after the core patient and token workflow is verified.
+            </p>
+
+        </div>
+
+    `;
 
 }
 
 
 /* =========================================================
-   UTILS
+   PRESCRIPTIONS
 ========================================================= */
 
-function formatToken(
-    number
-) {
+async function renderPrescriptions() {
 
-    return String(number)
-        .padStart(3,"0");
+    const container =
+        document.getElementById(
+            "prescriptionList"
+        );
+
+
+    if (!container) {
+        return;
+    }
+
+
+    container.innerHTML = `
+
+        <div class="panel">
+
+            <h3>
+                Prescriptions
+            </h3>
+
+            <p class="muted">
+                Prescription module will be connected to Firestore after the consultation workflow is verified.
+            </p>
+
+        </div>
+
+    `;
 
 }
 
 
-function formatDate(
-    dateString
+/* =========================================================
+   DOCUMENT UPLOAD
+========================================================= */
+
+function handleDocumentUpload(
+    event
 ) {
 
-    if (!dateString) {
+    if (
+        !currentPatient
+    ) {
 
-        return "--";
+        showToast(
+            "Please login as patient."
+        );
+
+        return;
 
     }
 
 
-    const date =
-        new Date(
-            dateString +
-            "T00:00:00"
-        );
+    const file =
+        event.target.files[0];
 
 
-    return date.toLocaleDateString(
-        "en-IN",
-        {
-            day: "2-digit",
-            month: "short",
-            year: "numeric"
-        }
-    );
-
-}
-
-
-function escapeHtml(
-    text
-) {
-
-    if (text === null ||
-        text === undefined) {
-
-        return "";
-
+    if (!file) {
+        return;
     }
 
 
-    return String(text)
-        .replace(
-            /&/g,
-            "&amp;"
-        )
-        .replace(
-            /</g,
-            "&lt;"
-        )
-        .replace(
-            />/g,
-            "&gt;"
-        )
-        .replace(
-            /"/g,
-            "&quot;"
-        )
-        .replace(
-            /'/g,
-            "&#039;"
-        );
+    showToast(
+        "Document upload will be connected to Firebase Storage next."
+    );
+
+
+    event.target.value =
+        "";
 
 }
 
 
 /* =========================================================
-   CURRENT PATIENT DOCUMENTS
+   DOCTOR DOCUMENTS
 ========================================================= */
 
 function viewCurrentPatientDocuments() {
-
-    if (!currentConsultationToken) {
-
-        return;
-
-    }
-
-
-    const tokens =
-        getData(
-            STORAGE_KEYS.tokens
-        );
-
-
-    const token =
-        tokens.find(
-            t =>
-                t.id ===
-                currentConsultationToken
-        );
-
-
-    if (!token) {
-
-        return;
-
-    }
-
-
-    const documents =
-        getData(
-            STORAGE_KEYS.documents
-        )
-        .filter(
-            d =>
-                d.patientId ===
-                token.patientId
-        );
-
 
     openModal(`
 
@@ -3520,61 +3873,16 @@ function viewCurrentPatientDocuments() {
         </div>
 
         <h2 style="margin-top:8px;">
-            ${escapeHtml(
-                token.patientName
-            )}
+            Documents
         </h2>
 
-        <div style="margin-top:20px;">
+        <p class="muted"
+           style="margin-top:15px;">
 
-            ${
-                documents.length
+            Firebase Storage integration
+            will be connected in the next module.
 
-                ?
-
-                documents.map(
-                    doc => `
-
-                    <div class="document-row">
-
-                        <div class="document-info">
-
-                            <div class="document-icon">
-                                📄
-                            </div>
-
-                            <div>
-
-                                <strong>
-                                    ${escapeHtml(
-                                        doc.fileName
-                                    )}
-                                </strong>
-
-                                <small class="muted">
-                                    ${escapeHtml(
-                                        doc.type
-                                    )}
-                                </small>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                `
-                ).join("")
-
-                :
-
-                `<p class="muted">
-                    No documents available.
-                </p>`
-
-            }
-
-        </div>
+        </p>
 
     `);
 
@@ -3582,112 +3890,482 @@ function viewCurrentPatientDocuments() {
 
 
 /* =========================================================
-   CURRENT PATIENT HISTORY
+   DOCTOR HISTORY
 ========================================================= */
 
-function viewCurrentPatientHistory() {
+async function viewCurrentPatientHistory() {
 
-    if (!currentConsultationToken) {
-
-        return;
-
-    }
-
-
-    const tokens =
-        getData(
-            STORAGE_KEYS.tokens
-        );
-
-
-    const token =
-        tokens.find(
-            t =>
-                t.id ===
-                currentConsultationToken
-        );
-
-
-    if (!token) {
+    if (
+        !currentConsultationToken
+    ) {
 
         return;
 
     }
 
 
-    const history =
-        tokens
-            .filter(
-                t =>
-                    t.patientId ===
-                    token.patientId
-            )
-            .sort(
-                (a,b) =>
-                    new Date(b.createdAt) -
-                    new Date(a.createdAt)
+    try {
+
+        const tokenSnapshot =
+            await getDoc(
+                doc(
+                    db,
+                    "tokens",
+                    currentConsultationToken
+                )
             );
 
 
-    openModal(`
+        if (
+            !tokenSnapshot.exists()
+        ) {
 
-        <div class="eyebrow">
-            PATIENT HISTORY
-        </div>
+            return;
 
-        <h2 style="margin-top:8px;">
-            ${escapeHtml(
-                token.patientName
-            )}
-        </h2>
+        }
 
-        <div style="margin-top:20px;">
 
-            ${
-                history.map(
-                    item => `
+        const token =
+            tokenSnapshot.data();
 
-                    <div style="
-                        padding:15px 0;
-                        border-bottom:
-                        1px solid rgba(255,255,255,0.08);
-                    ">
 
-                        <strong>
-                            Token ${formatToken(
-                                item.number
-                            )}
-                        </strong>
+        const tokenQuery =
+            query(
+                collection(
+                    db,
+                    "tokens"
+                ),
+                where(
+                    "patientUid",
+                    "==",
+                    token.patientUid
+                )
+            );
 
-                        <p class="muted"
-                           style="margin-top:5px;">
 
-                            ${formatDate(
-                                item.date
-                            )}
+        const snapshot =
+            await getDocs(
+                tokenQuery
+            );
 
-                            •
 
-                            ${escapeHtml(
-                                item.reason
-                            )}
+        const history = [];
 
-                            •
 
-                            ${item.status}
+        snapshot.forEach(
+            item => {
 
-                        </p>
+                history.push({
 
-                    </div>
+                    id:
+                        item.id,
 
-                `
-                ).join("")
+                    ...item.data()
+
+                });
+
+            }
+        );
+
+
+        history.sort(
+            (a, b) =>
+                new Date(
+                    b.bookedAt
+                ) -
+                new Date(
+                    a.bookedAt
+                )
+        );
+
+
+        openModal(`
+
+            <div class="eyebrow">
+                PATIENT HISTORY
+            </div>
+
+
+            <h2 style="margin-top:8px;">
+
+                ${escapeHtml(
+                    token.patientName
+                )}
+
+            </h2>
+
+
+            <div style="margin-top:20px;">
+
+                ${
+                    history.length
+
+                    ?
+
+                    history.map(
+                        item => `
+
+                        <div style="
+                            padding:15px 0;
+                            border-bottom:
+                            1px solid
+                            rgba(255,255,255,0.08);
+                        ">
+
+                            <strong>
+
+                                Token
+                                ${formatToken(
+                                    item.number
+                                )}
+
+                            </strong>
+
+
+                            <p class="muted"
+                               style="margin-top:5px;">
+
+                                Visit:
+                                ${
+                                    formatDate(
+                                        item.visitDate
+                                    )
+                                }
+
+                                •
+                                ${
+                                    escapeHtml(
+                                        item.reason
+                                    )
+                                }
+
+                                •
+                                ${
+                                    escapeHtml(
+                                        item.status
+                                    )
+                                }
+
+                            </p>
+
+                        </div>
+
+                    `
+                    ).join("")
+
+                    :
+
+                    `<p class="muted">
+                        No previous visits.
+                    </p>`
+
+                }
+
+            </div>
+
+        `);
+
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   STAFF FIND PATIENT
+========================================================= */
+
+async function findStaffPatient() {
+
+    const mobile =
+        document
+            .getElementById(
+                "staffMobile"
+            )
+            ?.value
+            .trim();
+
+
+    if (!mobile) {
+        return;
+    }
+
+
+    try {
+
+        const patientQuery =
+            query(
+                collection(
+                    db,
+                    "patients"
+                ),
+                where(
+                    "mobile",
+                    "==",
+                    mobile
+                )
+            );
+
+
+        const snapshot =
+            await getDocs(
+                patientQuery
+            );
+
+
+        const found =
+            document.getElementById(
+                "staffPatientFound"
+            );
+
+
+        const newPatient =
+            document.getElementById(
+                "staffNewPatient"
+            );
+
+
+        if (
+            !snapshot.empty
+        ) {
+
+            const patient =
+                snapshot
+                    .docs[0]
+                    .data();
+
+
+            found
+                ?.classList
+                .remove("hidden");
+
+
+            newPatient
+                ?.classList
+                .add("hidden");
+
+
+            const name =
+                document.getElementById(
+                    "staffFoundName"
+                );
+
+
+            const id =
+                document.getElementById(
+                    "staffFoundId"
+                );
+
+
+            if (name) {
+
+                name.textContent =
+                    patient.name;
 
             }
 
-        </div>
 
-    `);
+            if (id) {
+
+                id.textContent =
+                    patient.patientId;
+
+            }
+
+        } else {
+
+            found
+                ?.classList
+                .add("hidden");
+
+
+            newPatient
+                ?.classList
+                .remove("hidden");
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   STAFF TOKEN
+========================================================= */
+
+async function createStaffToken() {
+
+    const mobile =
+        document
+            .getElementById(
+                "staffMobile"
+            )
+            ?.value
+            .trim();
+
+
+    if (!mobile) {
+
+        showToast(
+            "Enter mobile number."
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        const patientQuery =
+            query(
+                collection(
+                    db,
+                    "patients"
+                ),
+                where(
+                    "mobile",
+                    "==",
+                    mobile
+                )
+            );
+
+
+        const snapshot =
+            await getDocs(
+                patientQuery
+            );
+
+
+        let patient = null;
+
+
+        if (
+            !snapshot.empty
+        ) {
+
+            patient =
+                snapshot
+                    .docs[0]
+                    .data();
+
+        }
+
+
+        if (!patient) {
+
+            showToast(
+                "Patient is not registered. Please complete patient registration first."
+            );
+
+            return;
+
+        }
+
+
+        const doctorId =
+            document
+                .getElementById(
+                    "staffDoctor"
+                )
+                ?.value;
+
+
+        const reason =
+            document
+                .getElementById(
+                    "staffReason"
+                )
+                ?.value;
+
+
+        const visitDate =
+            todayString();
+
+
+        const token =
+            await createToken(
+                patient,
+                doctorId,
+                reason,
+                "Staff",
+                visitDate
+            );
+
+
+        showToast(
+            "Token " +
+            formatToken(
+                token.number
+            ) +
+            " created."
+        );
+
+
+        const mobileInput =
+            document.getElementById(
+                "staffMobile"
+            );
+
+
+        if (mobileInput) {
+
+            mobileInput.value =
+                "";
+
+        }
+
+
+        refreshAll();
+
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+        showToast(
+            "Unable to create token."
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   DOCTOR CURRENT STATUS
+========================================================= */
+
+async function getCurrentDoctorToken(
+    doctorId,
+    visitDate
+) {
+
+    const queue =
+        await getDoctorQueue(
+            doctorId,
+            visitDate
+        );
+
+
+    return queue.length
+        ? queue[0]
+        : null;
 
 }
 
@@ -3696,38 +4374,124 @@ function viewCurrentPatientHistory() {
    REFRESH ALL
 ========================================================= */
 
-function refreshAll() {
+async function refreshAll() {
 
-    renderStats();
+    try {
 
-    renderDoctorStatus();
+        await renderStats();
 
-    renderDoctorQueue();
+        await renderDoctorStatus();
 
-    renderPatientToken();
+        await renderDoctorQueue();
 
-    renderTokens();
+        await renderPatientToken();
 
-    renderPatients();
+        await renderTokens();
 
-    renderFollowups();
+        await renderPatients();
 
-    renderDocuments();
+        await renderFollowups();
 
-    renderPrescriptions();
+        await renderDocuments();
 
-    renderNotificationBadge();
+        await renderPrescriptions();
+
+
+    } catch (error) {
+
+        console.error(
+            "Refresh error:",
+            error
+        );
+
+    }
 
 }
 
 
 /* =========================================================
-   START
+   FIREBASE AUTH STATE
 ========================================================= */
 
-initializeDemoData();
+onAuthStateChanged(
+    auth,
+    async user => {
 
-refreshAll();
+        if (!user) {
+
+            return;
+
+        }
+
+
+        /*
+           We only automatically restore
+           patient accounts at this stage.
+        */
+
+        try {
+
+            const patientRef =
+                doc(
+                    db,
+                    "patients",
+                    user.uid
+                );
+
+
+            const snapshot =
+                await getDoc(
+                    patientRef
+                );
+
+
+            if (
+                snapshot.exists()
+            ) {
+
+                currentPatient =
+                    snapshot.data();
+
+                currentRole =
+                    "patient";
+
+
+                /*
+                   Don't force-open the app if
+                   user is already viewing it.
+                */
+
+            }
+
+        } catch (error) {
+
+            console.error(
+                "Auth state error:",
+                error
+            );
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   STARTUP
+========================================================= */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        setupVisitDate();
+
+        /*
+           Existing UI remains available.
+        */
+
+    }
+);
 
 
 /* =========================================================
@@ -3743,7 +4507,9 @@ if (
         () => {
 
             navigator.serviceWorker
-                .register("sw.js")
+                .register(
+                    "sw.js"
+                )
                 .catch(
                     error =>
                         console.log(
