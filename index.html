@@ -1025,7 +1025,407 @@
 
 
                             <div>
+<!-- =====================================================
+     DOCTOR CONSULTATION FORM
+====================================================== -->
 
+<div
+    id="doctorConsultationForm"
+    class="panel hidden"
+    style="margin-top:20px;"
+>
+
+    <div class="panel-header">
+
+        <div>
+
+            <p class="eyebrow">
+                CONSULTATION
+            </p>
+
+            <h3>
+                Consultation & Treatment Plan
+            </h3>
+
+            <p>
+                Enter only the essential details. The system
+                will create prescription, schedule and follow-up
+                automatically.
+            </p>
+
+        </div>
+
+        <span
+            id="consultationStatus"
+            class="status-pill"
+        >
+            In Consultation
+        </span>
+
+    </div>
+
+
+    <!-- =================================================
+         PATIENT SUMMARY
+    ================================================== -->
+
+    <div class="history-grid">
+
+        <div>
+
+            <span>
+                Patient
+            </span>
+
+            <strong
+                id="consultPatientNameForm"
+            >
+                --
+            </strong>
+
+        </div>
+
+
+        <div>
+
+            <span>
+                Patient ID
+            </span>
+
+            <strong
+                id="consultPatientId"
+            >
+                --
+            </strong>
+
+        </div>
+
+
+        <div>
+
+            <span>
+                Token
+            </span>
+
+            <strong
+                id="consultTokenNumber"
+            >
+                --
+            </strong>
+
+        </div>
+
+
+        <div>
+
+            <span>
+                Visit Reason
+            </span>
+
+            <strong
+                id="consultVisitReason"
+            >
+                --
+            </strong>
+
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         DIAGNOSIS
+    ================================================== -->
+
+    <div
+        class="form-group"
+        style="margin-top:20px;"
+    >
+
+        <label>
+            Diagnosis
+        </label>
+
+        <input
+            type="text"
+            id="diagnosis"
+            placeholder="Enter diagnosis"
+            autocomplete="off"
+        >
+
+    </div>
+
+
+    <!-- =================================================
+         DOCTOR NOTES
+    ================================================== -->
+
+    <div class="form-group">
+
+        <label>
+            Doctor Notes
+        </label>
+
+        <textarea
+            id="doctorNotes"
+            rows="4"
+            placeholder="Enter important consultation notes..."
+        ></textarea>
+
+    </div>
+
+
+    <!-- =================================================
+         PRESCRIPTION
+    ================================================== -->
+
+    <div
+        class="panel-header"
+        style="margin-top:25px;"
+    >
+
+        <div>
+
+            <p class="eyebrow">
+                PRESCRIPTION
+            </p>
+
+            <h3>
+                Medicines
+            </h3>
+
+            <p>
+                Add one or more medicines.
+            </p>
+
+        </div>
+
+
+        <button
+            type="button"
+            class="secondary-btn"
+            onclick="addPrescriptionMedicine()"
+        >
+            + Add Medicine
+        </button>
+
+    </div>
+
+
+    <div
+        id="prescriptionMedicineList"
+    >
+    </div>
+
+
+    <!-- =================================================
+         FOLLOW-UP
+    ================================================== -->
+
+    <div
+        class="panel-header"
+        style="margin-top:30px;"
+    >
+
+        <div>
+
+            <p class="eyebrow">
+                FOLLOW-UP
+            </p>
+
+            <h3>
+                Automatic Follow-up
+            </h3>
+
+            <p>
+                Select only the number of days.
+                Follow-up date and reminder will be calculated automatically.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <div class="form-group">
+
+        <label>
+
+            <input
+                type="checkbox"
+                id="followupRequired"
+                onchange="toggleFollowupFields()"
+            >
+
+            Follow-up Required
+
+        </label>
+
+    </div>
+
+
+    <div
+        id="followupFields"
+        class="hidden"
+    >
+
+        <div class="form-row">
+
+            <div class="form-group">
+
+                <label>
+                    Follow-up After
+                </label>
+
+                <select
+                    id="followupDays"
+                >
+
+                    <option value="3">
+                        3 Days
+                    </option>
+
+                    <option value="7" selected>
+                        7 Days
+                    </option>
+
+                    <option value="14">
+                        14 Days
+                    </option>
+
+                    <option value="30">
+                        30 Days
+                    </option>
+
+                    <option value="60">
+                        60 Days
+                    </option>
+
+                    <option value="90">
+                        90 Days
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Purpose
+                </label>
+
+                <input
+                    type="text"
+                    id="followupPurpose"
+                    value="Review"
+                    placeholder="Review"
+                >
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         INVESTIGATION
+    ================================================== -->
+
+    <div
+        class="panel-header"
+        style="margin-top:30px;"
+    >
+
+        <div>
+
+            <p class="eyebrow">
+                INVESTIGATION
+            </p>
+
+            <h3>
+                Required Test
+            </h3>
+
+            <p>
+                Select only if the doctor requires an investigation.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <div class="form-group">
+
+        <select
+            id="investigation"
+        >
+
+            <option value="">
+                No Investigation
+            </option>
+
+            <option value="Blood Test">
+                Blood Test
+            </option>
+
+            <option value="Urine Test">
+                Urine Test
+            </option>
+
+            <option value="X-Ray">
+                X-Ray
+            </option>
+
+            <option value="Scan">
+                Scan
+            </option>
+
+            <option value="ECG">
+                ECG
+            </option>
+
+            <option value="Other">
+                Other
+            </option>
+
+        </select>
+
+    </div>
+
+
+    <!-- =================================================
+         COMPLETE CONSULTATION
+    ================================================== -->
+
+    <div
+        class="consult-actions"
+        style="margin-top:30px;"
+    >
+
+        <button
+            type="button"
+            class="secondary-btn"
+            onclick="closeDoctorConsultationForm()"
+        >
+            Cancel
+        </button>
+
+
+        <button
+            type="button"
+            class="primary-btn"
+            onclick="completeConsultation()"
+        >
+            ✓ Complete Consultation
+        </button>
+
+    </div>
+
+</div>
 
                                 <span class="eyebrow">
                                     PATIENT
