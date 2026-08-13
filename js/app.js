@@ -4522,3 +4522,31 @@ if (
     );
 
 }
+window.loginAs = loginAs;
+window.logout = logout;
+
+window.openPage = openPage;
+window.showNotifications = showNotifications;
+
+window.selectReason = selectReason;
+window.generatePatientToken = generatePatientToken;
+
+window.toggleDoctorAvailability = toggleDoctorAvailability;
+window.completeConsultation = completeConsultation;
+
+window.renderPatients = renderPatients;
+window.viewPatient = viewPatient;
+
+window.createStaffToken = createStaffToken;
+window.findStaffPatient = findStaffPatient;
+
+window.viewCurrentPatientDocuments =
+    viewCurrentPatientDocuments;
+
+window.viewCurrentPatientHistory =
+    viewCurrentPatientHistory;
+
+window.handleDocumentUpload =
+    handleDocumentUpload;
+
+window.closeModal = closeModal;
