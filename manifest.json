@@ -1,0 +1,22 @@
+{
+    "name": "VTOOS Smart Hospital",
+    "short_name": "VTOOS Hospital",
+    "description": "Smart Hospital Token and Patient Follow-up System",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#071426",
+    "theme_color": "#071426",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}
