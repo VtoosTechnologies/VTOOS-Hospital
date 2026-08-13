@@ -2141,20 +2141,18 @@ async function renderConsultationCounts(
 
 /* =========================================================
    COMPLETE CONSULTATION
+   VTOOS HOSPITAL - PRODUCTION FOUNDATION
 ========================================================= */
 
 async function completeConsultation() {
 
-    if (
-        !currentConsultationToken
-    ) {
+    if (!currentConsultationToken) {
 
         showToast(
             "Select a patient first."
         );
 
         return;
-
     }
 
 
@@ -2168,28 +2166,443 @@ async function completeConsultation() {
             );
 
 
-        const snapshot =
-            await getDoc(
-                tokenRef
-            );
+        const tokenSnapshot =
+            await getDoc(tokenRef);
 
 
-        if (
-            !snapshot.exists()
-        ) {
+        if (!tokenSnapshot.exists()) {
 
             showToast(
-                "Token not found."
+                "Patient token not found."
             );
 
             return;
-
         }
 
 
         const token =
-            snapshot.data();
+            tokenSnapshot.data();
 
+
+        /* =====================================================
+           GET CONSULTATION FORM VALUES
+        ===================================================== */
+
+        const diagnosis =
+            document
+                .getElementById(
+                    "diagnosis"
+                )
+                ?.value
+                ?.trim() || "";
+
+
+        const doctorNotes =
+            document
+                .getElementById(
+                    "doctorNotes"
+                )
+                ?.value
+                ?.trim() || "";
+
+
+        const followupRequired =
+            document
+                .getElementById(
+                    "followupRequired"
+                )
+                ?.checked || false;
+
+
+        const followupDays =
+            Number(
+                document
+                    .getElementById(
+                        "followupDays"
+                    )
+                    ?.value || 0
+            );
+
+
+        const followupPurpose =
+            document
+                .getElementById(
+                    "followupPurpose"
+                )
+                ?.value
+                ?.trim() || "";
+
+
+        const investigation =
+            document
+                .getElementById(
+                    "investigation"
+                )
+                ?.value
+                ?.trim() || "";
+
+
+        /* =====================================================
+           VALIDATION
+        ===================================================== */
+
+        if (!diagnosis) {
+
+            showToast(
+                "Enter diagnosis."
+            );
+
+            return;
+        }
+
+
+        /* =====================================================
+           CONSULTATION ID
+        ===================================================== */
+
+        const consultationRef =
+            await addDoc(
+                collection(
+                    db,
+                    "consultations"
+                ),
+                {
+
+                    tokenId:
+                        currentConsultationToken,
+
+                    patientUid:
+                        token.patientUid,
+
+                    patientId:
+                        token.patientId || "",
+
+                    patientName:
+                        token.patientName || "",
+
+                    doctorId:
+                        token.doctorId,
+
+                    doctorName:
+                        token.doctorName || "",
+
+                    visitDate:
+                        token.visitDate,
+
+                    reason:
+                        token.reason || "",
+
+                    diagnosis:
+                        diagnosis,
+
+                    doctorNotes:
+                        doctorNotes,
+
+                    consultationDate:
+                        todayString(),
+
+                    status:
+                        "Completed",
+
+                    createdAt:
+                        new Date().toISOString()
+
+                }
+            );
+
+
+        /* =====================================================
+           PRESCRIPTIONS
+        ===================================================== */
+
+        const medicines =
+            collectPrescriptionMedicines();
+
+
+        for (
+            const medicine
+            of medicines
+        ) {
+
+            await addDoc(
+                collection(
+                    db,
+                    "prescriptions"
+                ),
+                {
+
+                    consultationId:
+                        consultationRef.id,
+
+                    patientUid:
+                        token.patientUid,
+
+                    patientId:
+                        token.patientId || "",
+
+                    doctorId:
+                        token.doctorId,
+
+                    medicineName:
+                        medicine.medicineName,
+
+                    dosage:
+                        medicine.dosage,
+
+                    morning:
+                        medicine.morning,
+
+                    afternoon:
+                        medicine.afternoon,
+
+                    evening:
+                        medicine.evening,
+
+                    night:
+                        medicine.night,
+
+                    foodInstruction:
+                        medicine.foodInstruction,
+
+                    durationDays:
+                        medicine.durationDays,
+
+                    startDate:
+                        todayString(),
+
+                    endDate:
+                        getDateAfterDays(
+                            Math.max(
+                                0,
+                                medicine.durationDays - 1
+                            )
+                        ),
+
+                    status:
+                        "Active",
+
+                    createdAt:
+                        new Date().toISOString()
+
+                }
+            );
+
+
+            /* =================================================
+               MEDICINE SCHEDULE
+            ================================================= */
+
+            await addDoc(
+                collection(
+                    db,
+                    "medicineSchedules"
+                ),
+                {
+
+                    consultationId:
+                        consultationRef.id,
+
+                    patientUid:
+                        token.patientUid,
+
+                    patientId:
+                        token.patientId || "",
+
+                    medicineName:
+                        medicine.medicineName,
+
+                    dosage:
+                        medicine.dosage,
+
+                    morning:
+                        medicine.morning,
+
+                    afternoon:
+                        medicine.afternoon,
+
+                    evening:
+                        medicine.evening,
+
+                    night:
+                        medicine.night,
+
+                    foodInstruction:
+                        medicine.foodInstruction,
+
+                    durationDays:
+                        medicine.durationDays,
+
+                    startDate:
+                        todayString(),
+
+                    endDate:
+                        getDateAfterDays(
+                            Math.max(
+                                0,
+                                medicine.durationDays - 1
+                            )
+                        ),
+
+                    status:
+                        "Pending",
+
+                    createdAt:
+                        new Date().toISOString()
+
+                }
+            );
+
+        }
+
+
+        /* =====================================================
+           FOLLOW-UP
+        ===================================================== */
+
+        if (
+            followupRequired &&
+            followupDays > 0
+        ) {
+
+            const followupDate =
+                getDateAfterDays(
+                    followupDays
+                );
+
+
+            const followupRef =
+                await addDoc(
+                    collection(
+                        db,
+                        "followups"
+                    ),
+                    {
+
+                        consultationId:
+                            consultationRef.id,
+
+                        patientUid:
+                            token.patientUid,
+
+                        patientId:
+                            token.patientId || "",
+
+                        patientName:
+                            token.patientName || "",
+
+                        doctorId:
+                            token.doctorId,
+
+                        doctorName:
+                            token.doctorName || "",
+
+                        followupDate:
+                            followupDate,
+
+                        purpose:
+                            followupPurpose ||
+                            "Review",
+
+                        status:
+                            "Upcoming",
+
+                        reminderDate:
+                            getDateBeforeDays(
+                                followupDate,
+                                1
+                            ),
+
+                        tokenBookingAvailable:
+                            true,
+
+                        createdAt:
+                            new Date().toISOString()
+
+                    }
+                );
+
+
+            /* ===============================================
+               FOLLOW-UP NOTIFICATION
+            =============================================== */
+
+            await addDoc(
+                collection(
+                    db,
+                    "notifications"
+                ),
+                {
+
+                    patientUid:
+                        token.patientUid,
+
+                    type:
+                        "followup",
+
+                    title:
+                        "Follow-up Scheduled",
+
+                    message:
+                        `Your follow-up with ${token.doctorName || "doctor"} is scheduled for ${formatDate(followupDate)}.`,
+
+                    followupId:
+                        followupRef.id,
+
+                    read:
+                        false,
+
+                    createdAt:
+                        new Date().toISOString()
+
+                }
+            );
+
+        }
+
+
+        /* =====================================================
+           INVESTIGATION
+        ===================================================== */
+
+        if (investigation) {
+
+            await addDoc(
+                collection(
+                    db,
+                    "investigations"
+                ),
+                {
+
+                    consultationId:
+                        consultationRef.id,
+
+                    patientUid:
+                        token.patientUid,
+
+                    patientId:
+                        token.patientId || "",
+
+                    doctorId:
+                        token.doctorId,
+
+                    testName:
+                        investigation,
+
+                    status:
+                        "Pending",
+
+                    createdAt:
+                        new Date().toISOString()
+
+                }
+            );
+
+        }
+
+
+        /* =====================================================
+           UPDATE TOKEN
+        ===================================================== */
 
         await updateDoc(
             tokenRef,
@@ -2198,25 +2611,52 @@ async function completeConsultation() {
                 status:
                     "Completed",
 
-                completedAt:
-                    new Date()
-                        .toISOString()
+                consultationId:
+                    consultationRef.id,
+
+                consultationCompletedAt:
+                    new Date().toISOString(),
+
+                updatedAt:
+                    new Date().toISOString()
 
             }
         );
 
 
-        await createNotification(
-            token.patientId,
-            "Consultation Completed",
-            "Your consultation with " +
-            token.doctorName +
-            " is completed."
-        );
+        /* =====================================================
+           PATIENT NOTIFICATION
+        ===================================================== */
 
+        await addDoc(
+            collection(
+                db,
+                "notifications"
+            ),
+            {
 
-        showToast(
-            "Consultation completed."
+                patientUid:
+                    token.patientUid,
+
+                type:
+                    "consultation",
+
+                title:
+                    "Consultation Completed",
+
+                message:
+                    "Your consultation has been completed. Your prescription and follow-up details are available in the app.",
+
+                consultationId:
+                    consultationRef.id,
+
+                read:
+                    false,
+
+                createdAt:
+                    new Date().toISOString()
+
+            }
         );
 
 
@@ -2224,37 +2664,25 @@ async function completeConsultation() {
             null;
 
 
-        document
-            .getElementById(
-                "doctorPatientDetails"
-            )
-            ?.classList
-            .add("hidden");
+        showToast(
+            "Consultation completed successfully."
+        );
 
 
-        document
-            .getElementById(
-                "doctorCurrentToken"
-            )
-            .textContent =
-            "Next Patient";
+        await renderDoctorQueue();
 
 
-        document
-            .getElementById(
-                "doctorCurrentPatient"
-            )
-            .textContent =
-            "Select next patient";
+        await renderPatientToken();
 
 
-        refreshAll();
-
-    } catch (error) {
+    }
+    catch (error) {
 
         console.error(
+            "Complete consultation error:",
             error
         );
+
 
         showToast(
             "Unable to complete consultation."
@@ -2263,8 +2691,6 @@ async function completeConsultation() {
     }
 
 }
-
-
 /* =========================================================
    PATIENT TOKEN STATUS
 ========================================================= */
@@ -4550,3 +4976,502 @@ window.handleDocumentUpload =
     handleDocumentUpload;
 
 window.closeModal = closeModal;
+/* =========================================================
+   DATE BEFORE DAYS
+========================================================= */
+
+function getDateBeforeDays(
+    dateString,
+    days
+) {
+
+    const date =
+        new Date(
+            dateString +
+            "T00:00:00"
+        );
+
+
+    date.setDate(
+        date.getDate() -
+        days
+    );
+
+
+    const year =
+        date.getFullYear();
+
+
+    const month =
+        String(
+            date.getMonth() + 1
+        ).padStart(
+            2,
+            "0"
+        );
+
+
+    const day =
+        String(
+            date.getDate()
+        ).padStart(
+            2,
+            "0"
+        );
+
+
+    return `${year}-${month}-${day}`;
+
+}
+
+
+/* =========================================================
+   COLLECT PRESCRIPTION MEDICINES
+========================================================= */
+
+function collectPrescriptionMedicines() {
+
+    const rows =
+        document.querySelectorAll(
+            ".prescription-medicine"
+        );
+
+
+    const medicines = [];
+
+
+    rows.forEach(
+        row => {
+
+            const medicineName =
+                row.querySelector(
+                    ".medicine-name"
+                )?.value
+                ?.trim() || "";
+
+
+            if (!medicineName) {
+                return;
+            }
+
+
+            const dosage =
+                row.querySelector(
+                    ".medicine-dosage"
+                )?.value
+                ?.trim() || "1 Tablet";
+
+
+            const morning =
+                row.querySelector(
+                    ".medicine-morning"
+                )?.checked || false;
+
+
+            const afternoon =
+                row.querySelector(
+                    ".medicine-afternoon"
+                )?.checked || false;
+
+
+            const evening =
+                row.querySelector(
+                    ".medicine-evening"
+                )?.checked || false;
+
+
+            const night =
+                row.querySelector(
+                    ".medicine-night"
+                )?.checked || false;
+
+
+            const foodInstruction =
+                row.querySelector(
+                    ".medicine-food"
+                )?.value || "After Food";
+
+
+            const durationDays =
+                Number(
+                    row.querySelector(
+                        ".medicine-duration"
+                    )?.value || 1
+                );
+
+
+            medicines.push({
+
+                medicineName,
+
+                dosage,
+
+                morning,
+
+                afternoon,
+
+                evening,
+
+                night,
+
+                foodInstruction,
+
+                durationDays
+
+            });
+
+        }
+    );
+
+
+    return medicines;
+
+}
+/* =========================================================
+   PRESCRIPTION MEDICINE UI
+========================================================= */
+
+let prescriptionMedicineCounter = 0;
+
+
+function addPrescriptionMedicine(
+    medicineData = null
+) {
+
+    prescriptionMedicineCounter++;
+
+
+    const list =
+        document.getElementById(
+            "prescriptionMedicineList"
+        );
+
+
+    if (!list) {
+        return;
+    }
+
+
+    const id =
+        prescriptionMedicineCounter;
+
+
+    const medicine =
+        medicineData || {
+
+            medicineName: "",
+
+            dosage: "1 Tablet",
+
+            morning: true,
+
+            afternoon: false,
+
+            evening: false,
+
+            night: true,
+
+            foodInstruction:
+                "After Food",
+
+            durationDays: 5
+
+        };
+
+
+    const div =
+        document.createElement(
+            "div"
+        );
+
+
+    div.className =
+        "prescription-medicine card";
+
+
+    div.style.marginBottom =
+        "15px";
+
+
+    div.innerHTML = `
+
+        <div class="form-group">
+
+            <label>
+                Medicine Name
+            </label>
+
+            <input
+                type="text"
+                class="medicine-name"
+                placeholder="Example: Paracetamol 500 mg"
+                value="${escapeHtml(
+                    medicine.medicineName
+                )}"
+            >
+
+        </div>
+
+
+        <div class="form-row">
+
+            <div class="form-group">
+
+                <label>
+                    Dosage
+                </label>
+
+                <input
+                    type="text"
+                    class="medicine-dosage"
+                    value="${escapeHtml(
+                        medicine.dosage
+                    )}"
+                    placeholder="1 Tablet"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Duration
+                </label>
+
+                <input
+                    type="number"
+                    min="1"
+                    class="medicine-duration"
+                    value="${medicine.durationDays}"
+                >
+
+            </div>
+
+        </div>
+
+
+        <div class="form-group">
+
+            <label>
+                Medicine Timing
+            </label>
+
+            <div
+                style="
+                    display:flex;
+                    gap:15px;
+                    flex-wrap:wrap;
+                "
+            >
+
+                <label>
+
+                    <input
+                        type="checkbox"
+                        class="medicine-morning"
+                        ${
+                            medicine.morning
+                                ? "checked"
+                                : ""
+                        }
+                    >
+
+                    Morning
+
+                </label>
+
+
+                <label>
+
+                    <input
+                        type="checkbox"
+                        class="medicine-afternoon"
+                        ${
+                            medicine.afternoon
+                                ? "checked"
+                                : ""
+                        }
+                    >
+
+                    Afternoon
+
+                </label>
+
+
+                <label>
+
+                    <input
+                        type="checkbox"
+                        class="medicine-evening"
+                        ${
+                            medicine.evening
+                                ? "checked"
+                                : ""
+                        }
+                    >
+
+                    Evening
+
+                </label>
+
+
+                <label>
+
+                    <input
+                        type="checkbox"
+                        class="medicine-night"
+                        ${
+                            medicine.night
+                                ? "checked"
+                                : ""
+                        }
+                    >
+
+                    Night
+
+                </label>
+
+            </div>
+
+        </div>
+
+
+        <div class="form-row">
+
+            <div class="form-group">
+
+                <label>
+                    Food Instruction
+                </label>
+
+                <select
+                    class="medicine-food"
+                >
+
+                    <option
+                        value="Before Food"
+                        ${
+                            medicine.foodInstruction ===
+                            "Before Food"
+                                ? "selected"
+                                : ""
+                        }
+                    >
+                        Before Food
+                    </option>
+
+
+                    <option
+                        value="After Food"
+                        ${
+                            medicine.foodInstruction ===
+                            "After Food"
+                                ? "selected"
+                                : ""
+                        }
+                    >
+                        After Food
+                    </option>
+
+
+                    <option
+                        value="With Food"
+                        ${
+                            medicine.foodInstruction ===
+                            "With Food"
+                                ? "selected"
+                                : ""
+                        }
+                    >
+                        With Food
+                    </option>
+
+
+                    <option
+                        value="Any Time"
+                        ${
+                            medicine.foodInstruction ===
+                            "Any Time"
+                                ? "selected"
+                                : ""
+                        }
+                    >
+                        Any Time
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div
+                class="form-group"
+                style="
+                    display:flex;
+                    align-items:end;
+                "
+            >
+
+                <button
+                    type="button"
+                    class="secondary-btn"
+                    onclick="this.closest('.prescription-medicine').remove()"
+                >
+
+                    Remove
+
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+
+    list.appendChild(
+        div
+    );
+
+}
+
+
+/* =========================================================
+   FOLLOW-UP UI
+========================================================= */
+
+function toggleFollowupFields() {
+
+    const checkbox =
+        document.getElementById(
+            "followupRequired"
+        );
+
+
+    const fields =
+        document.getElementById(
+            "followupFields"
+        );
+
+
+    if (!checkbox || !fields) {
+        return;
+    }
+
+
+    if (checkbox.checked) {
+
+        fields.classList.remove(
+            "hidden"
+        );
+
+    } else {
+
+        fields.classList.add(
+            "hidden"
+        );
+
+    }
+
+}
