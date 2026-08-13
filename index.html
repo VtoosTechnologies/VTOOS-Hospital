@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="theme-color" content="#071426">
+
+    <title>VTOOS Hospital</title>
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<!-- =========================================================
+     LOGIN SCREEN
+========================================================= -->
+
+<div id="loginScreen" class="screen active">
+
+    <div class="login-wrapper">
+
+        <div class="brand-area">
+
+            <div class="logo-circle">
+                <span>VS</span>
+            </div>
+
+            <h1>VTOOS</h1>
+            <p>Smart Hospital System</p>
+
+        </div>
+
+        <div class="login-card">
+
+            <h2>Welcome Back</h2>
+            <p class="muted">
+                Select your access type
+            </p>
+
+            <div class="role-grid">
+
+                <button class="role-btn"
+                        onclick="loginAs('patient')">
+
+                    <span class="role-icon">👤</span>
+                    <strong>Patient</strong>
+                    <small>Book Token & Follow-up</small>
+
+                </button>
+
+                <button class="role-btn"
+                        onclick="loginAs('doctor')">
+
+                    <span class="role-icon">🩺</span>
+                    <strong>Doctor</strong>
+                    <small>Manage Consultation</small>
+
+                </button>
+
+                <button class="role-btn"
+                        onclick="loginAs('staff')">
+
+                    <span class="role-icon">🏥</span>
+                    <strong>Reception</strong>
+                    <small>Manage Patients & Tokens</small>
+
+                </button>
+
+            </div>
+
+        </div>
+
+        <div class="login-footer">
+            VTOOS Software Solutions
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     MAIN APP
+========================================================= -->
+
+<div id="appScreen" class="screen">
+
+    <!-- TOP HEADER -->
+
+    <header class="topbar">
+
+        <div class="brand-small">
+
+            <div class="mini-logo">
+                VS
+            </div>
+
+            <div>
+                <strong>VTOOS</strong>
+                <span>Smart Hospital</span>
+            </div>
+
+        </div>
+
+        <div class="top-actions">
+
+            <button class="icon-btn"
+                    onclick="showNotifications()">
+                🔔
+                <span id="notificationBadge"
+                      class="notification-badge">
+                    0
+                </span>
+            </button>
+
+            <button class="profile-btn"
+                    onclick="logout()">
+
+                <span id="currentUserName">
+                    User
+                </span>
+
+                <small>Logout</small>
+
+            </button>
+
+        </div>
+
+    </header>
+
+
+    <!-- SIDE NAVIGATION -->
+
+    <aside class="sidebar">
+
+        <button class="nav-item active"
+                data-page="dashboard"
+                onclick="openPage('dashboard')">
+
+            <span>⌂</span>
+            Dashboard
+
+        </button>
+
+        <button class="nav-item"
+                data-page="tokens"
+                onclick="openPage('tokens')">
+
+            <span>🎫</span>
+            Tokens
+
+        </button>
+
+        <button class="nav-item"
+                data-page="patients"
+                onclick="openPage('patients')">
+
+            <span>👥</span>
+            Patients
+
+        </button>
+
+        <button class="nav-item"
+                data-page="followups"
+                onclick="openPage('followups')">
+
+            <span>🔔</span>
+            Follow-ups
+
+        </button>
+
+        <button class="nav-item"
+                data-page="documents"
+                onclick="openPage('documents')">
+
+            <span>📁</span>
+            Documents
+
+        </button>
+
+        <button class="nav-item"
+                data-page="prescriptions"
+                onclick="openPage('prescriptions')">
+
+            <span>💊</span>
+            Prescriptions
+
+        </button>
+
+    </aside>
+
+
+    <!-- CONTENT -->
+
+    <main class="main-content">
+
+
+        <!-- =================================================
+             DASHBOARD
+        ================================================== -->
+
+        <section id="dashboardPage"
+                 class="page active-page">
+
+            <div class="page-heading">
+
+                <div>
+
+                    <p class="eyebrow">
+                        SMART HOSPITAL
+                    </p>
+
+                    <h1 id="dashboardTitle">
+                        Dashboard
+                    </h1>
+
+                    <p class="muted">
+                        Everything important in one place.
+                    </p>
+
+                </div>
+
+                <div id="doctorStatusBox"
+                     class="doctor-status">
+                </div>
+
+            </div>
+
+
+            <!-- STATS -->
+
+            <div class="stats-grid">
+
+                <div class="stat-card">
+
+                    <div class="stat-icon blue">
+                        👥
+                    </div>
+
+                    <div>
+                        <span>Total Patients</span>
+                        <strong id="statPatients">
+                            0
+                        </strong>
+                    </div>
+
+                </div>
+
+
+                <div class="stat-card">
+
+                    <div class="stat-icon purple">
+                        🎫
+                    </div>
+
+                    <div>
+                        <span>Today's Tokens</span>
+                        <strong id="statTokens">
+                            0
+                        </strong>
+                    </div>
+
+                </div>
+
+
+                <div class="stat-card">
+
+                    <div class="stat-icon green">
+                        ✓
+                    </div>
+
+                    <div>
+                        <span>Completed</span>
+                        <strong id="statCompleted">
+                            0
+                        </strong>
+                    </div>
+
+                </div>
+
+
+                <div class="stat-card">
+
+                    <div class="stat-icon orange">
+                        🔔
+                    </div>
+
+                    <div>
+                        <span>Follow-ups</span>
+                        <strong id="statFollowups">
+                            0
+                        </strong>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- PATIENT DASHBOARD -->
+
+            <div id="patientDashboard"
+                 class="dashboard-section hidden">
+
+                <div class="hero-token-card">
+
+                    <div>
+
+                        <span class="hero-label">
+                            YOUR TOKEN
+                        </span>
+
+                        <div id="patientTokenNumber"
+                             class="hero-token-number">
+                            --
+                        </div>
+
+                        <p id="patientTokenStatus">
+                            No active token
+                        </p>
+
+                    </div>
+
+                    <div class="hero-token-right">
+
+                        <div>
+                            <span>Current Token</span>
+                            <strong id="patientCurrentToken">
+                                --
+                            </strong>
+                        </div>
+
+                        <div>
+                            <span>Patients Ahead</span>
+                            <strong id="patientAhead">
+                                --
+                            </strong>
+                        </div>
+
+                        <div>
+                            <span>Approx. Time</span>
+                            <strong id="patientWaitTime">
+                                --
+                            </strong>
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="dashboard-grid">
+
+                    <div class="panel">
+
+                        <div class="panel-header">
+
+                            <div>
+                                <h3>Get Token</h3>
+                                <p>
+                                    Select a reason and generate your token.
+                                </p>
+                            </div>
+
+                        </div>
+
+                        <div class="form-group">
+
+                            <label>
+                                Doctor
+                            </label>
+
+                            <select id="patientDoctor">
+
+                                <option value="doctor1">
+                                    Dr. Kumar - General Medicine
+                                </option>
+
+                                <option value="doctor2">
+                                    Dr. Priya - Pediatrics
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label>
+                                Reason for Visit
+                            </label>
+
+                            <div class="reason-grid">
+
+                                <button class="reason-btn"
+                                        onclick="selectReason(this,'General Consultation')">
+                                    🩺 General
+                                </button>
+
+                                <button class="reason-btn"
+                                        onclick="selectReason(this,'Follow-up')">
+                                    🔄 Follow-up
+                                </button>
+
+                                <button class="reason-btn"
+                                        onclick="selectReason(this,'Fever / Cold')">
+                                    🌡 Fever / Cold
+                                </button>
+
+                                <button class="reason-btn"
+                                        onclick="selectReason(this,'Pain')">
+                                    💢 Pain
+                                </button>
+
+                                <button class="reason-btn"
+                                        onclick="selectReason(this,'Skin')">
+                                    🧴 Skin
+                                </button>
+
+                                <button class="reason-btn"
+                                        onclick="selectReason(this,'Other')">
+                                    + Other
+                                </button>
+
+                            </div>
+
+                            <input type="hidden"
+                                   id="selectedReason">
+
+                        </div>
+
+
+                        <button class="primary-btn full"
+                                onclick="generatePatientToken()">
+
+                            🎫 Generate Token
+
+                        </button>
+
+                    </div>
+
+
+                    <div class="panel">
+
+                        <div class="panel-header">
+
+                            <div>
+                                <h3>My Health</h3>
+                                <p>
+                                    Your digital health records.
+                                </p>
+                            </div>
+
+                        </div>
+
+                        <div class="quick-grid">
+
+                            <button onclick="openPage('followups')">
+                                <span>🔔</span>
+                                <strong>Follow-ups</strong>
+                                <small id="patientFollowupCount">
+                                    0 pending
+                                </small>
+                            </button>
+
+                            <button onclick="openPage('documents')">
+                                <span>📁</span>
+                                <strong>Documents</strong>
+                                <small id="patientDocumentCount">
+                                    0 documents
+                                </small>
+                            </button>
+
+                            <button onclick="openPage('prescriptions')">
+                                <span>💊</span>
+                                <strong>Prescriptions</strong>
+                                <small>
+                                    View history
+                                </small>
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- DOCTOR DASHBOARD -->
+
+            <div id="doctorDashboard"
+                 class="dashboard-section hidden">
+
+                <div class="doctor-main-card">
+
+                    <div class="doctor-main-header">
+
+                        <div>
+
+                            <span class="eyebrow">
+                                NOW CONSULTING
+                            </span>
+
+                            <h2 id="doctorCurrentToken">
+                                No Patient
+                            </h2>
+
+                            <p id="doctorCurrentPatient">
+                                Waiting for next patient
+                            </p>
+
+                        </div>
+
+                        <div class="doctor-actions">
+
+                            <button id="doctorAvailableBtn"
+                                    class="success-btn"
+                                    onclick="toggleDoctorAvailability()">
+
+                                🟢 Mark Available
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+                    <div id="doctorPatientDetails"
+                         class="patient-detail-box hidden">
+
+                        <div class="patient-detail-header">
+
+                            <div>
+
+                                <span class="eyebrow">
+                                    PATIENT
+                                </span>
+
+                                <h3 id="consultPatientName">
+                                    --
+                                </h3>
+
+                                <p id="consultPatientInfo">
+                                    --
+                                </p>
+
+                            </div>
+
+                            <span id="consultReason"
+                                  class="status-pill">
+                                --
+                            </span>
+
+                        </div>
+
+
+                        <div class="history-grid">
+
+                            <div>
+                                <span>Previous Visits</span>
+                                <strong id="consultVisits">
+                                    0
+                                </strong>
+                            </div>
+
+                            <div>
+                                <span>Documents</span>
+                                <strong id="consultDocuments">
+                                    0
+                                </strong>
+                            </div>
+
+                            <div>
+                                <span>Prescriptions</span>
+                                <strong id="consultPrescriptions">
+                                    0
+                                </strong>
+                            </div>
+
+                        </div>
+
+
+                        <div class="consult-actions">
+
+                            <button class="secondary-btn"
+                                    onclick="viewCurrentPatientDocuments()">
+
+                                📁 Documents
+
+                            </button>
+
+                            <button class="secondary-btn"
+                                    onclick="viewCurrentPatientHistory()">
+
+                                📜 History
+
+                            </button>
+
+                            <button class="primary-btn"
+                                    onclick="completeConsultation()">
+
+                                ✓ Complete Consultation
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="panel">
+
+                    <div class="panel-header">
+
+                        <div>
+                            <h3>Waiting Queue</h3>
+                            <p>
+                                Select any patient when required.
+                            </p>
+                        </div>
+
+                        <span id="doctorQueueCount"
+                              class="count-badge">
+                            0
+                        </span>
+
+                    </div>
+
+                    <div id="doctorQueue"
+                         class="queue-list">
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- STAFF DASHBOARD -->
+
+            <div id="staffDashboard"
+                 class="dashboard-section hidden">
+
+                <div class="dashboard-grid">
+
+                    <div class="panel">
+
+                        <div class="panel-header">
+
+                            <div>
+                                <h3>Create Token</h3>
+                                <p>
+                                    Staff-assisted patient entry.
+                                </p>
+                            </div>
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label>
+                                Patient Mobile Number
+                            </label>
+
+                            <input id="staffMobile"
+                                   type="tel"
+                                   maxlength="10"
+                                   placeholder="Enter mobile number"
+                                   oninput="findStaffPatient()">
+
+                        </div>
+
+
+                        <div id="staffPatientFound"
+                             class="found-patient hidden">
+
+                            <span>✓ Existing Patient</span>
+
+                            <strong id="staffFoundName">
+                                --
+                            </strong>
+
+                            <small id="staffFoundId">
+                                --
+                            </small>
+
+                        </div>
+
+
+                        <div id="staffNewPatient"
+                             class="new-patient-form">
+
+                            <div class="form-group">
+
+                                <label>
+                                    Patient Name
+                                </label>
+
+                                <input id="staffPatientName"
+                                       placeholder="Patient name">
+
+                            </div>
+
+                            <div class="form-row">
+
+                                <div class="form-group">
+
+                                    <label>
+                                        Age
+                                    </label>
+
+                                    <input id="staffPatientAge"
+                                           type="number"
+                                           placeholder="Age">
+
+                                </div>
+
+                                <div class="form-group">
+
+                                    <label>
+                                        Gender
+                                    </label>
+
+                                    <select id="staffPatientGender">
+
+                                        <option value="Male">
+                                            Male
+                                        </option>
+
+                                        <option value="Female">
+                                            Female
+                                        </option>
+
+                                        <option value="Other">
+                                            Other
+                                        </option>
+
+                                    </select>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label>
+                                Doctor
+                            </label>
+
+                            <select id="staffDoctor">
+
+                                <option value="doctor1">
+                                    Dr. Kumar - General Medicine
+                                </option>
+
+                                <option value="doctor2">
+                                    Dr. Priya - Pediatrics
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <div class="form-group">
+
+                            <label>
+                                Reason
+                            </label>
+
+                            <select id="staffReason">
+
+                                <option>
+                                    General Consultation
+                                </option>
+
+                                <option>
+                                    Follow-up
+                                </option>
+
+                                <option>
+                                    Fever / Cold
+                                </option>
+
+                                <option>
+                                    Pain
+                                </option>
+
+                                <option>
+                                    Skin
+                                </option>
+
+                                <option>
+                                    Other
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <button class="primary-btn full"
+                                onclick="createStaffToken()">
+
+                            🎫 Create Token
+
+                        </button>
+
+                    </div>
+
+
+                    <div class="panel">
+
+                        <div class="panel-header">
+
+                            <div>
+                                <h3>Doctor Status</h3>
+                                <p>
+                                    Live availability.
+                                </p>
+                            </div>
+
+                        </div>
+
+                        <div id="staffDoctorStatus"
+                             class="doctor-list">
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             TOKENS
+        ================================================== -->
+
+        <section id="tokensPage"
+                 class="page">
+
+            <div class="page-heading">
+
+                <div>
+
+                    <p class="eyebrow">
+                        LIVE QUEUE
+                    </p>
+
+                    <h1>Token Management</h1>
+
+                </div>
+
+            </div>
+
+            <div class="panel">
+
+                <div class="queue-header">
+
+                    <span>Token</span>
+                    <span>Patient</span>
+                    <span>Reason</span>
+                    <span>Status</span>
+                    <span>Action</span>
+
+                </div>
+
+                <div id="allTokensList">
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             PATIENTS
+        ================================================== -->
+
+        <section id="patientsPage"
+                 class="page">
+
+            <div class="page-heading">
+
+                <div>
+
+                    <p class="eyebrow">
+                        PATIENT MANAGEMENT
+                    </p>
+
+                    <h1>Patients</h1>
+
+                </div>
+
+            </div>
+
+            <div class="panel">
+
+                <div class="search-box">
+
+                    <input id="patientSearch"
+                           placeholder="Search by name or mobile..."
+                           oninput="renderPatients()">
+
+                </div>
+
+                <div id="patientsList">
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             FOLLOW UPS
+        ================================================== -->
+
+        <section id="followupsPage"
+                 class="page">
+
+            <div class="page-heading">
+
+                <div>
+
+                    <p class="eyebrow">
+                        SMART FOLLOW-UP
+                    </p>
+
+                    <h1>Follow-ups</h1>
+
+                    <p class="muted">
+                        Automatic patient follow-up tracking.
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div id="followupList"
+                 class="followup-grid">
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             DOCUMENTS
+        ================================================== -->
+
+        <section id="documentsPage"
+                 class="page">
+
+            <div class="page-heading">
+
+                <div>
+
+                    <p class="eyebrow">
+                        DIGITAL RECORDS
+                    </p>
+
+                    <h1>Documents</h1>
+
+                    <p class="muted">
+                        Patient documents and medical records.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="panel">
+
+                <div class="upload-area">
+
+                    <div class="upload-icon">
+                        📁
+                    </div>
+
+                    <h3>Upload Document</h3>
+
+                    <p>
+                        PDF, JPG or PNG
+                    </p>
+
+                    <input id="documentFile"
+                           type="file"
+                           accept=".pdf,.jpg,.jpeg,.png"
+                           onchange="handleDocumentUpload(event)">
+
+                </div>
+
+                <div id="documentsList">
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             PRESCRIPTIONS
+        ================================================== -->
+
+        <section id="prescriptionsPage"
+                 class="page">
+
+            <div class="page-heading">
+
+                <div>
+
+                    <p class="eyebrow">
+                        DIGITAL PRESCRIPTION
+                    </p>
+
+                    <h1>Prescriptions</h1>
+
+                    <p class="muted">
+                        Structured prescription history.
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div id="prescriptionList"
+                 class="prescription-grid">
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+
+<!-- =========================================================
+     TOAST
+========================================================= -->
+
+<div id="toast"
+     class="toast">
+</div>
+
+
+<!-- =========================================================
+     MODAL
+========================================================= -->
+
+<div id="modal"
+     class="modal">
+
+    <div class="modal-box">
+
+        <button class="modal-close"
+                onclick="closeModal()">
+            ×
+        </button>
+
+        <div id="modalContent">
+        </div>
+
+    </div>
+
+</div>
+
+
+<script src="app.js"></script>
+
+</body>
+</html>
