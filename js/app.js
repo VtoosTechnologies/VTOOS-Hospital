@@ -2836,7 +2836,13 @@ async function renderPatientToken() {
 
 
 /* =========================================================
-   PATIENT QUEUE / WAIT TIME
+   PATIENT LIVE QUEUE
+   - Current token
+   - Patients ahead
+   - Average consultation time
+   - Approximate waiting range
+   - Recommended arrival time
+   - Doctor availability
 ========================================================= */
 
 async function calculatePatientQueue(
@@ -2845,6 +2851,15 @@ async function calculatePatientQueue(
 
     try {
 
+        if (!activeToken) {
+            return;
+        }
+
+
+        /* =====================================================
+           GET CURRENT DOCTOR QUEUE
+        ===================================================== */
+
         const queue =
             await getDoctorQueue(
                 activeToken.doctorId,
@@ -2852,44 +2867,153 @@ async function calculatePatientQueue(
             );
 
 
+        /* =====================================================
+           SORT QUEUE BY TOKEN NUMBER
+        ===================================================== */
+
+        queue.sort(
+            (a, b) => {
+
+                return (
+                    Number(a.number) -
+                    Number(b.number)
+                );
+
+            }
+        );
+
+
+        /* =====================================================
+           FIND ACTIVE / WAITING PATIENTS AHEAD
+
+           Completed patients are ignored.
+        ===================================================== */
+
         const ahead =
             queue.filter(
                 item => {
 
-                    return (
+                    const itemNumber =
                         Number(
                             item.number
-                        ) <
+                        );
+
+                    const activeNumber =
                         Number(
                             activeToken.number
-                        )
+                        );
+
+
+                    const itemStatus =
+                        item.status ||
+                        "Waiting";
+
+
+                    return (
+
+                        itemNumber <
+                        activeNumber
+
+                        &&
+
+                        itemStatus !==
+                        "Completed"
+
                     );
 
                 }
             );
 
 
-        const current =
-            queue.length
-                ? queue[0]
+        /* =====================================================
+           FIND CURRENT SERVING TOKEN
+
+           Priority patients first.
+        ===================================================== */
+
+        const activeQueue =
+            queue.filter(
+                item => {
+
+                    return (
+                        item.status ===
+                        "Consulting"
+                    );
+
+                }
+            );
+
+
+        let current =
+            activeQueue.length
+                ? activeQueue[0]
                 : null;
 
+
+        /* =====================================================
+           IF NOBODY IS CONSULTING
+
+           Find first waiting patient.
+        ===================================================== */
+
+        if (!current) {
+
+            const waiting =
+                queue.filter(
+                    item => {
+
+                        return (
+                            item.status ===
+                            "Waiting"
+                        );
+
+                    }
+                );
+
+
+            if (waiting.length) {
+
+                current =
+                    waiting[0];
+
+            }
+
+        }
+
+
+        /* =====================================================
+           DOCTOR AVAILABILITY
+        ===================================================== */
+
+        let doctorAvailable =
+            false;
+
+
+        try {
+
+            doctorAvailable =
+                await getDoctorAvailability(
+                    activeToken.doctorId
+                );
+
+        }
+        catch (availabilityError) {
+
+            console.warn(
+                "Doctor availability error:",
+                availabilityError
+            );
+
+        }
+
+
+        /* =====================================================
+           UPDATE CURRENT TOKEN
+        ===================================================== */
 
         const currentElement =
             document.getElementById(
                 "patientCurrentToken"
-            );
-
-
-        const aheadElement =
-            document.getElementById(
-                "patientAhead"
-            );
-
-
-        const waitElement =
-            document.getElementById(
-                "patientWaitTime"
             );
 
 
@@ -2905,6 +3029,16 @@ async function calculatePatientQueue(
         }
 
 
+        /* =====================================================
+           UPDATE PATIENT AHEAD
+        ===================================================== */
+
+        const aheadElement =
+            document.getElementById(
+                "patientAhead"
+            );
+
+
         if (aheadElement) {
 
             aheadElement.textContent =
@@ -2913,30 +3047,323 @@ async function calculatePatientQueue(
         }
 
 
-        /*
-           Initial demo average:
-           8 minutes per patient.
+        /* =====================================================
+           LIVE QUEUE ELEMENTS
+        ===================================================== */
 
-           Later this will be calculated
-           from actual completed consultations.
-        */
+        const liveDoctorElement =
+            document.getElementById(
+                "patientLiveDoctor"
+            );
+
+
+        const liveDoctorStatusElement =
+            document.getElementById(
+                "patientLiveDoctorStatus"
+            );
+
+
+        const liveAheadElement =
+            document.getElementById(
+                "patientLivePatientsAhead"
+            );
+
+
+        const liveWaitElement =
+            document.getElementById(
+                "patientLiveWaitRange"
+            );
+
+
+        const doctorStatusElement =
+            document.getElementById(
+                "patientDoctorLiveStatus"
+            );
+
+
+        const indicatorElement =
+            document.getElementById(
+                "patientLiveIndicator"
+            );
+
+
+        /* =====================================================
+           DOCTOR NAME
+        ===================================================== */
+
+        if (liveDoctorElement) {
+
+            liveDoctorElement.textContent =
+                activeToken.doctorName ||
+                activeToken.doctorId ||
+                "Doctor";
+
+        }
+
+
+        /* =====================================================
+           DOCTOR STATUS
+        ===================================================== */
+
+        if (liveDoctorStatusElement) {
+
+            liveDoctorStatusElement.textContent =
+                doctorAvailable
+                    ? "🟢 Available"
+                    : "🔴 Currently Unavailable";
+
+        }
+
+
+        if (doctorStatusElement) {
+
+            doctorStatusElement.textContent =
+                doctorAvailable
+                    ? "🟢 Doctor Available"
+                    : "🔴 Doctor Unavailable";
+
+        }
+
+
+        if (indicatorElement) {
+
+            indicatorElement.textContent =
+                doctorAvailable
+                    ? "● LIVE"
+                    : "● WAITING";
+
+        }
+
+
+        /* =====================================================
+           GET AVERAGE CONSULTATION TIME
+
+           Uses actual completed consultation durations
+           when available.
+
+           Fallback = 8 minutes.
+        ===================================================== */
 
         const averageMinutes =
-            8;
+            await getAverageConsultationMinutes(
+                activeToken.doctorId
+            );
+
+
+        /* =====================================================
+           WAITING TIME CALCULATION
+        ===================================================== */
+
+        let estimatedMinutes =
+            ahead.length *
+            averageMinutes;
+
+
+        /*
+           If doctor is unavailable,
+           don't pretend the queue is progressing.
+        */
+
+        if (!doctorAvailable) {
+
+            estimatedMinutes =
+                Math.max(
+                    estimatedMinutes,
+                    0
+                );
+
+        }
+
+
+        /* =====================================================
+           CREATE SAFE RANGE
+
+           Example:
+
+           28 mins
+           ↓
+           25–35 mins
+        ===================================================== */
+
+        const lowerMinutes =
+            Math.max(
+                0,
+                Math.floor(
+                    estimatedMinutes -
+                    Math.max(
+                        5,
+                        averageMinutes * 0.5
+                    )
+                )
+            );
+
+
+        const upperMinutes =
+            Math.ceil(
+                estimatedMinutes +
+                Math.max(
+                    5,
+                    averageMinutes * 0.5
+                )
+            );
+
+
+        /* =====================================================
+           IF NO PATIENT AHEAD
+        ===================================================== */
+
+        let waitRangeText =
+            "Ready";
+
+
+        if (ahead.length > 0) {
+
+            waitRangeText =
+                lowerMinutes +
+                "–" +
+                upperMinutes +
+                " mins";
+
+        }
+
+
+        /* =====================================================
+           UPDATE OLD WAIT ELEMENT
+        ===================================================== */
+
+        const waitElement =
+            document.getElementById(
+                "patientWaitTime"
+            );
 
 
         if (waitElement) {
 
             waitElement.textContent =
-                "~ " +
-                (
-                    ahead.length *
-                    averageMinutes
-                ) +
-                " mins";
+                ahead.length > 0
+                    ? "~ " +
+                      waitRangeText
+                    : "Ready";
 
         }
 
+
+        /* =====================================================
+           UPDATE LIVE WAIT RANGE
+        ===================================================== */
+
+        if (liveWaitElement) {
+
+            liveWaitElement.textContent =
+                doctorAvailable
+                    ? waitRangeText
+                    : "Waiting for doctor";
+
+        }
+
+
+        if (liveAheadElement) {
+
+            liveAheadElement.textContent =
+                ahead.length;
+
+        }
+
+
+        /* =====================================================
+           RECOMMENDED ARRIVAL TIME
+        ===================================================== */
+
+        const arrivalElement =
+            document.getElementById(
+                "patientArrivalTime"
+            );
+
+
+        if (arrivalElement) {
+
+            if (!doctorAvailable) {
+
+                arrivalElement.textContent =
+                    "Doctor is currently unavailable.";
+
+            }
+            else if (ahead.length === 0) {
+
+                arrivalElement.textContent =
+                    "Please be ready now.";
+
+            }
+            else {
+
+                const now =
+                    new Date();
+
+
+                const arrivalStart =
+                    new Date(
+                        now.getTime() +
+                        (
+                            lowerMinutes *
+                            60 *
+                            1000
+                        )
+                    );
+
+
+                const arrivalEnd =
+                    new Date(
+                        now.getTime() +
+                        (
+                            upperMinutes *
+                            60 *
+                            1000
+                        )
+                    );
+
+
+                arrivalElement.textContent =
+                    formatTimeOnly(
+                        arrivalStart
+                    ) +
+                    " – " +
+                    formatTimeOnly(
+                        arrivalEnd
+                    );
+
+            }
+
+        }
+
+
+        /* =====================================================
+           UPDATE TIMESTAMP
+        ===================================================== */
+
+        const updatedElement =
+            document.getElementById(
+                "patientQueueUpdatedAt"
+            );
+
+
+        if (updatedElement) {
+
+            updatedElement.textContent =
+                "Live update: " +
+                formatTimeOnly(
+                    new Date()
+                );
+
+        }
+
+
+        /* =====================================================
+           APPROACHING TOKEN NOTIFICATION
+
+           IMPORTANT:
+           Do not create notification repeatedly
+           on every live update.
+        ===================================================== */
 
         if (
             ahead.length <= 2 &&
@@ -2944,26 +3371,24 @@ async function calculatePatientQueue(
             "Waiting"
         ) {
 
-            await createNotification(
-                activeToken.patientId,
-                "Token Approaching",
-                "Your token is approaching. Please be ready."
+            await createApproachingNotificationOnce(
+                activeToken
             );
 
         }
 
 
-    } catch (error) {
+    }
+    catch (error) {
 
         console.error(
+            "Patient queue calculation error:",
             error
         );
 
     }
 
 }
-
-
 /* =========================================================
    DOCTOR QUEUE RENDER
 ========================================================= */
