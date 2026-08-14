@@ -4319,7 +4319,8 @@ async function renderTokens() {
         );
 
 
-    } catch (error) {
+    }
+    catch (error) {
 
         console.error(
             error
@@ -4330,6 +4331,10 @@ async function renderTokens() {
     }
 
 
+    /*
+       Only today's tokens
+    */
+
     tokens =
         tokens.filter(
             token =>
@@ -4337,6 +4342,10 @@ async function renderTokens() {
                 todayString()
         );
 
+
+    /*
+       Patient sees only own tokens
+    */
 
     if (
         currentRole ===
@@ -4354,12 +4363,20 @@ async function renderTokens() {
     }
 
 
+    /*
+       Sort by token number
+    */
+
     tokens.sort(
         (a, b) =>
             Number(a.number) -
             Number(b.number)
     );
 
+
+    /*
+       Render token list
+    */
 
     container.innerHTML =
         tokens
@@ -4386,6 +4403,7 @@ async function renderTokens() {
                             )}
 
                         </strong>
+
 
                         <small class="muted">
 
@@ -4422,20 +4440,18 @@ async function renderTokens() {
                             currentRole ===
                             "doctor"
 
-                            ?
+                                ?
 
                             `<button
                                 class="secondary-btn"
-                                onclick="selectPatientToken('${token.id}')">
-
+                                onclick="selectPatientToken('${token.id}')"
+                            >
                                 Open
-
                             </button>`
 
-                            :
+                                :
 
                             ""
-
                         }
 
                     </div>
@@ -4447,8 +4463,6 @@ async function renderTokens() {
             .join("");
 
 }
-
-
 /* =========================================================
    DOCTOR STATUS
 ========================================================= */
