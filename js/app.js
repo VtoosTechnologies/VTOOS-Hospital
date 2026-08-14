@@ -2026,7 +2026,82 @@ async function selectPatientToken(
     }
 
 }
+/* =========================================================
+   OPEN DOCTOR CONSULTATION FORM
+========================================================= */
 
+function openDoctorConsultationForm() {
+
+    /* Patient must be selected first */
+
+    if (!currentConsultationToken) {
+
+        showToast(
+            "Select a patient first."
+        );
+
+        return;
+    }
+
+
+    /* Find consultation form */
+
+    const form =
+        document.getElementById(
+            "doctorConsultationForm"
+        );
+
+
+    if (!form) {
+
+        console.error(
+            "doctorConsultationForm not found."
+        );
+
+        showToast(
+            "Consultation form not found."
+        );
+
+        return;
+    }
+
+
+    /* Open consultation form */
+
+    form.classList.remove(
+        "hidden"
+    );
+
+
+    /* Scroll doctor to form */
+
+    form.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+    });
+
+
+    /* Focus diagnosis field */
+
+    setTimeout(
+        () => {
+
+            const diagnosis =
+                document.getElementById(
+                    "diagnosis"
+                );
+
+            if (diagnosis) {
+
+                diagnosis.focus();
+
+            }
+
+        },
+        300
+    );
+
+}
 
 /* =========================================================
    CONSULTATION COUNTS
@@ -5950,7 +6025,7 @@ window.selectReason = selectReason;
 window.generatePatientToken = generatePatientToken;
 
 window.toggleDoctorAvailability = toggleDoctorAvailability;
-window.selectPatientToken = selectPatientToken;
+window.openDoctorConsultationForm = openDoctorConsultationForm;
 window.completeConsultation = completeConsultation;
 
 window.renderPatients = renderPatients;
