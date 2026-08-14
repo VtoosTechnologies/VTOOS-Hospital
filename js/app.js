@@ -6215,6 +6215,7 @@ window.selectReason = selectReason;
 window.generatePatientToken = generatePatientToken;
 
 window.toggleDoctorAvailability = toggleDoctorAvailability;
+window.selectPatientToken = selectPatientToken;
 window.completeConsultation = completeConsultation;
 
 window.renderPatients = renderPatients;
