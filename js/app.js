@@ -1030,7 +1030,7 @@ function openPatientApp() {
     setupRoleDashboard();
 
     setupVisitDate();
-
+setupPatientLiveQueueListener();
     refreshAll();
 
 }
