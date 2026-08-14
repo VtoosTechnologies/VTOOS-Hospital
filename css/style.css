@@ -2254,3 +2254,712 @@ select:focus {
     }
 
 }
+/* =========================================================
+   PATIENT DASHBOARD - PREMIUM UI
+========================================================= */
+
+.patient-welcome {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.patient-welcome h2 {
+    margin: 4px 0 6px;
+    font-size: clamp(24px, 4vw, 32px);
+}
+
+.patient-live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 13px;
+    border-radius: 999px;
+    background: rgba(34, 197, 94, 0.10);
+    border: 1px solid rgba(34, 197, 94, 0.22);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+
+/* =========================================================
+   LIVE DOT
+========================================================= */
+
+.live-dot {
+    width: 8px;
+    height: 8px;
+    display: inline-block;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 0 4px rgba(34,197,94,.12);
+}
+
+
+/* =========================================================
+   TOKEN HERO
+========================================================= */
+
+.patient-token-hero {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 20px;
+    padding: 24px;
+    border-radius: 22px;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(37,99,235,.98),
+            rgba(29,78,216,.92)
+        );
+    color: #fff;
+    box-shadow: 0 16px 35px rgba(37,99,235,.20);
+    margin-bottom: 18px;
+}
+
+.token-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    opacity: .78;
+}
+
+.token-number {
+    font-size: clamp(58px, 10vw, 82px);
+    line-height: .95;
+    font-weight: 900;
+    letter-spacing: -3px;
+    margin: 10px 0;
+}
+
+.token-status {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.token-doctor-status {
+    display: block;
+    margin-top: 7px;
+    opacity: .85;
+}
+
+.token-side-info {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    align-self: center;
+}
+
+.token-info-item {
+    padding: 14px;
+    border-radius: 15px;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.14);
+}
+
+.token-info-item span {
+    display: block;
+    font-size: 11px;
+    opacity: .78;
+    margin-bottom: 6px;
+}
+
+.token-info-item strong {
+    font-size: 22px;
+}
+
+
+/* =========================================================
+   LIVE QUEUE CARD
+========================================================= */
+
+.patient-live-card {
+    padding: 22px;
+    border-radius: 20px;
+    background: var(--card-bg, rgba(255,255,255,.96));
+    border: 1px solid rgba(148,163,184,.18);
+    border-left: 4px solid #22c55e;
+    box-shadow: 0 10px 30px rgba(15,23,42,.06);
+    margin-bottom: 20px;
+}
+
+.patient-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.patient-card-header h3 {
+    margin: 4px 0 5px;
+    font-size: 20px;
+}
+
+.patient-card-header p {
+    margin: 0;
+    font-size: 13px;
+    opacity: .70;
+}
+
+.live-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 11px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    background: rgba(34,197,94,.10);
+    color: #16a34a;
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   QUEUE SUMMARY
+========================================================= */
+
+.queue-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.queue-summary-box {
+    padding: 15px;
+    border-radius: 14px;
+    background: rgba(148,163,184,.07);
+    border: 1px solid rgba(148,163,184,.12);
+}
+
+.queue-summary-box span {
+    display: block;
+    font-size: 11px;
+    opacity: .62;
+    margin-bottom: 7px;
+}
+
+.queue-summary-box strong {
+    display: block;
+    font-size: 17px;
+}
+
+.queue-status-text {
+    color: #16a34a;
+}
+
+
+/* =========================================================
+   ARRIVAL BOX
+========================================================= */
+
+.arrival-box {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-top: 16px;
+    padding: 17px;
+    border-radius: 16px;
+    background: rgba(34,197,94,.08);
+    border: 1px solid rgba(34,197,94,.14);
+}
+
+.arrival-icon {
+    width: 46px;
+    height: 46px;
+    flex: 0 0 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    background: rgba(34,197,94,.14);
+    font-size: 22px;
+}
+
+.arrival-box span {
+    display: block;
+    font-size: 12px;
+    opacity: .68;
+}
+
+.arrival-box strong {
+    display: block;
+    margin-top: 4px;
+    font-size: 21px;
+}
+
+.arrival-box small {
+    display: block;
+    margin-top: 5px;
+    line-height: 1.5;
+    opacity: .58;
+}
+
+.queue-updated {
+    margin-top: 10px;
+    font-size: 11px;
+    opacity: .55;
+}
+
+
+/* =========================================================
+   PATIENT MAIN GRID
+========================================================= */
+
+.patient-section-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(300px, .8fr);
+    gap: 20px;
+    align-items: start;
+}
+
+.patient-main-column,
+.patient-side-column {
+    min-width: 0;
+}
+
+
+/* =========================================================
+   BOOK CARD
+========================================================= */
+
+.patient-book-card {
+    overflow: hidden;
+}
+
+.patient-primary-action {
+    min-height: 50px;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+
+/* =========================================================
+   DOCTOR STATUS
+========================================================= */
+
+.selected-doctor-status {
+    padding: 11px 13px;
+    margin-top: -5px;
+    margin-bottom: 15px;
+    border-radius: 11px;
+    background: rgba(59,130,246,.07);
+    border: 1px solid rgba(59,130,246,.10);
+    font-size: 13px;
+}
+
+
+/* =========================================================
+   REASON BUTTONS
+========================================================= */
+
+.reason-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 9px;
+}
+
+.reason-btn {
+    min-height: 45px;
+    padding: 10px 12px;
+    border-radius: 11px;
+    text-align: left;
+    font-size: 12px;
+    line-height: 1.35;
+    cursor: pointer;
+}
+
+
+/* =========================================================
+   PREVIOUS ISSUE
+========================================================= */
+
+.previous-issue-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-top: 14px;
+    padding: 13px;
+    border-radius: 13px;
+    background: rgba(59,130,246,.07);
+    border: 1px solid rgba(59,130,246,.12);
+}
+
+.previous-issue-box p {
+    margin: 5px 0 0;
+    font-size: 12px;
+    opacity: .70;
+}
+
+
+/* =========================================================
+   VISIT TYPE
+========================================================= */
+
+.visit-type-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.visit-type-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(148,163,184,.18);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.visit-type-option.normal {
+    background: rgba(34,197,94,.05);
+}
+
+.visit-type-option.emergency {
+    background: rgba(245,158,11,.06);
+}
+
+
+/* =========================================================
+   EMERGENCY
+========================================================= */
+
+.emergency-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 18px 0;
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+.emergency-divider::before,
+.emergency-divider::after {
+    content: "";
+    height: 1px;
+    flex: 1;
+    background: rgba(148,163,184,.20);
+}
+
+.emergency-action {
+    min-height: 52px;
+}
+
+.emergency-action small {
+    display: block;
+    margin-top: 4px;
+    opacity: .78;
+}
+
+.emergency-box {
+    margin-top: 14px;
+    padding: 15px;
+    border-radius: 15px;
+    background: rgba(239,68,68,.07);
+    border: 1px solid rgba(239,68,68,.15);
+}
+
+
+/* =========================================================
+   HEALTH SUMMARY
+========================================================= */
+
+.health-summary-item {
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 14px;
+}
+
+.health-summary-item span {
+    display: block;
+    font-size: 11px;
+    opacity: .60;
+}
+
+.health-summary-item strong {
+    display: block;
+    margin-top: 5px;
+    font-size: 14px;
+}
+
+.health-summary-item.condition {
+    background: rgba(59,130,246,.07);
+}
+
+.health-summary-item.treatment {
+    background: rgba(34,197,94,.07);
+}
+
+.health-summary-item.followup {
+    background: rgba(245,158,11,.08);
+}
+
+.health-summary-item.prescription {
+    background: rgba(168,85,247,.07);
+}
+
+
+/* =========================================================
+   QUICK ACTIONS
+========================================================= */
+
+.quick-action-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.quick-action-grid button {
+    padding: 13px 8px;
+    border-radius: 13px;
+    border: 1px solid rgba(148,163,184,.16);
+    background: transparent;
+    cursor: pointer;
+}
+
+.quick-action-grid button span {
+    display: block;
+    font-size: 20px;
+    margin-bottom: 5px;
+}
+
+.quick-action-grid button strong {
+    display: block;
+    font-size: 11px;
+}
+
+.quick-action-grid button small {
+    display: block;
+    margin-top: 3px;
+    font-size: 9px;
+    opacity: .58;
+}
+
+
+/* =========================================================
+   RECOVERY
+========================================================= */
+
+.patient-bottom-card {
+    margin-top: 20px;
+}
+
+.outcome-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.outcome-btn {
+    padding: 15px 10px;
+    border-radius: 14px;
+    border: 1px solid rgba(148,163,184,.16);
+    background: transparent;
+    cursor: pointer;
+    text-align: center;
+}
+
+.outcome-btn span {
+    display: block;
+    font-size: 23px;
+    margin-bottom: 7px;
+}
+
+.outcome-btn strong {
+    display: block;
+    font-size: 12px;
+}
+
+.outcome-btn small {
+    display: block;
+    margin-top: 4px;
+    font-size: 10px;
+    opacity: .58;
+}
+
+.outcome-btn.cured {
+    background: rgba(34,197,94,.06);
+}
+
+.outcome-btn.improving {
+    background: rgba(59,130,246,.06);
+}
+
+.outcome-btn.pending {
+    background: rgba(245,158,11,.06);
+}
+
+.outcome-btn.worse {
+    background: rgba(239,68,68,.06);
+}
+
+.outcome-message {
+    margin-top: 12px;
+    padding: 11px 13px;
+    border-radius: 11px;
+    background: rgba(148,163,184,.06);
+    font-size: 12px;
+}
+
+
+/* =========================================================
+   RATING
+========================================================= */
+
+.rating-stars {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.rating-stars button {
+    min-width: 52px;
+    min-height: 43px;
+    padding: 8px;
+    border-radius: 11px;
+    border: 1px solid rgba(148,163,184,.16);
+    background: transparent;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.patient-bottom-card textarea {
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 15px;
+    resize: vertical;
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 900px) {
+
+    .patient-token-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .patient-section-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .queue-summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+}
+
+
+@media (max-width: 600px) {
+
+    .patient-welcome {
+        align-items: flex-start;
+    }
+
+    .patient-welcome h2 {
+        font-size: 24px;
+    }
+
+    .patient-live-badge {
+        font-size: 10px;
+        padding: 6px 9px;
+    }
+
+    .patient-token-hero {
+        padding: 20px;
+        border-radius: 18px;
+    }
+
+    .token-number {
+        font-size: 62px;
+    }
+
+    .token-side-info {
+        gap: 7px;
+    }
+
+    .token-info-item {
+        padding: 11px 8px;
+    }
+
+    .token-info-item span {
+        font-size: 9px;
+    }
+
+    .token-info-item strong {
+        font-size: 18px;
+    }
+
+    .patient-live-card {
+        padding: 17px;
+        border-radius: 17px;
+    }
+
+    .patient-card-header {
+        align-items: flex-start;
+    }
+
+    .patient-card-header h3 {
+        font-size: 18px;
+    }
+
+    .queue-summary-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .queue-summary-box {
+        padding: 12px 10px;
+    }
+
+    .queue-summary-box strong {
+        font-size: 14px;
+    }
+
+    .arrival-box {
+        align-items: flex-start;
+        padding: 13px;
+    }
+
+    .arrival-box strong {
+        font-size: 18px;
+    }
+
+    .reason-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .visit-type-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .previous-issue-box {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .quick-action-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .outcome-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .outcome-btn {
+        padding: 13px 8px;
+    }
+
+}
