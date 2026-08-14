@@ -6025,6 +6025,7 @@ window.selectReason = selectReason;
 window.generatePatientToken = generatePatientToken;
 
 window.toggleDoctorAvailability = toggleDoctorAvailability;
+window.selectPatientToken = selectPatientToken;
 window.openDoctorConsultationForm = openDoctorConsultationForm;
 window.completeConsultation = completeConsultation;
 
