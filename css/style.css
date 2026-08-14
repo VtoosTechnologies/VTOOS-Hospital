@@ -2963,3 +2963,62 @@ select:focus {
     }
 
 }
+/* =========================================================
+   PATIENT DASHBOARD - COMPACT LIVE QUEUE
+========================================================= */
+
+#patientLiveQueueCard {
+    padding: 18px !important;
+    margin-top: 12px !important;
+}
+
+#patientLiveQueueCard .panel-header {
+    margin-bottom: 10px !important;
+}
+
+#patientLiveQueueCard .panel-header h3 {
+    font-size: 18px !important;
+    margin: 2px 0 !important;
+}
+
+#patientLiveQueueCard .panel-header p {
+    font-size: 12px !important;
+    margin: 2px 0 !important;
+}
+
+#patientLiveQueueCard .history-grid {
+    margin-top: 8px !important;
+    gap: 8px !important;
+}
+
+#patientLiveQueueCard .history-grid > div {
+    padding: 10px 12px !important;
+    min-height: auto !important;
+}
+
+#patientLiveQueueCard .history-grid span {
+    font-size: 11px !important;
+}
+
+#patientLiveQueueCard .history-grid strong {
+    font-size: 14px !important;
+}
+
+#patientRecommendedArrival {
+    margin-top: 10px !important;
+    padding: 10px 12px !important;
+}
+
+#patientArrivalTime {
+    font-size: 16px !important;
+    margin-top: 2px !important;
+}
+
+#patientRecommendedArrival small {
+    font-size: 10px !important;
+}
+
+#patientQueueUpdatedAt {
+    margin-top: 6px !important;
+    font-size: 10px !important;
+}
