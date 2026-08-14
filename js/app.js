@@ -3390,6 +3390,558 @@ async function calculatePatientQueue(
 
 }
 /* =========================================================
+   PATIENT LIVE QUEUE LISTENER
+========================================================= */
+
+function setupPatientLiveQueueListener() {
+
+    try {
+
+        /* Remove old listener if already running */
+        if (unsubscribeTokens) {
+
+            unsubscribeTokens();
+
+            unsubscribeTokens = null;
+
+        }
+
+
+        if (!currentPatient) {
+            return;
+        }
+
+
+        /* -----------------------------------------------
+           Get selected doctor and visit date
+        ----------------------------------------------- */
+
+        const doctorElement =
+            document.getElementById(
+                "patientDoctor"
+            );
+
+        const dateElement =
+            document.getElementById(
+                "patientVisitDate"
+            );
+
+
+        const doctorId =
+            doctorElement?.value;
+
+
+        const visitDate =
+            dateElement?.value ||
+            todayString();
+
+
+        if (!doctorId) {
+
+            console.warn(
+                "Patient doctor not selected."
+            );
+
+            return;
+
+        }
+
+
+        /* -----------------------------------------------
+           Listen to doctor's tokens LIVE
+        ----------------------------------------------- */
+
+        const tokenQuery =
+            query(
+                collection(
+                    db,
+                    "tokens"
+                ),
+                where(
+                    "doctorId",
+                    "==",
+                    doctorId
+                )
+            );
+
+
+        unsubscribeTokens =
+            onSnapshot(
+                tokenQuery,
+                async (snapshot) => {
+
+                    try {
+
+                        const tokens = [];
+
+
+                        snapshot.forEach(
+                            item => {
+
+                                const data =
+                                    item.data();
+
+
+                                /*
+                                   Only selected visit date
+                                */
+
+                                if (
+                                    data.visitDate !==
+                                    visitDate
+                                ) {
+
+                                    return;
+
+                                }
+
+
+                                tokens.push({
+
+                                    id:
+                                        item.id,
+
+                                    ...data
+
+                                });
+
+                            }
+                        );
+
+
+                        /* --------------------------------
+                           Find patient's token
+                        -------------------------------- */
+
+                        const patientTokens =
+                            tokens.filter(
+                                token => {
+
+                                    return (
+                                        token.patientUid ===
+                                        currentPatient.uid
+                                    );
+
+                                }
+                            );
+
+
+                        if (
+                            !patientTokens.length
+                        ) {
+
+                            return;
+
+                        }
+
+
+                        /*
+                           Latest booked token
+                        */
+
+                        patientTokens.sort(
+                            (a, b) => {
+
+                                return (
+                                    new Date(
+                                        b.bookedAt || 0
+                                    ) -
+                                    new Date(
+                                        a.bookedAt || 0
+                                    )
+                                );
+
+                            }
+                        );
+
+
+                        const activeToken =
+                            patientTokens[0];
+
+
+                        /* --------------------------------
+                           Update patient token number
+                        -------------------------------- */
+
+                        const numberElement =
+                            document.getElementById(
+                                "patientTokenNumber"
+                            );
+
+
+                        if (numberElement) {
+
+                            numberElement.textContent =
+                                formatToken(
+                                    activeToken.number
+                                );
+
+                        }
+
+
+                        /* --------------------------------
+                           Update token status
+                        -------------------------------- */
+
+                        const statusElement =
+                            document.getElementById(
+                                "patientTokenStatus"
+                            );
+
+
+                        if (statusElement) {
+
+                            statusElement.textContent =
+                                (
+                                    activeToken.status ||
+                                    "Waiting"
+                                ) +
+                                " • " +
+                                formatDate(
+                                    activeToken.visitDate
+                                );
+
+                        }
+
+
+                        /* --------------------------------
+                           Recalculate queue
+                        -------------------------------- */
+
+                        await calculatePatientQueue(
+                            activeToken
+                        );
+
+
+                    }
+                    catch (error) {
+
+                        console.error(
+                            "Live patient queue update error:",
+                            error
+                        );
+
+                    }
+
+                },
+                error => {
+
+                    console.error(
+                        "Patient queue listener error:",
+                        error
+                    );
+
+                }
+            );
+
+
+    }
+    catch (error) {
+
+        console.error(
+            "Unable to setup patient live queue:",
+            error
+        );
+
+    }
+
+}
+/* =========================================================
+   AVERAGE CONSULTATION TIME
+========================================================= */
+
+async function getAverageConsultationMinutes(
+    doctorId
+) {
+
+    try {
+
+        if (!doctorId) {
+            return 8;
+        }
+
+
+        const consultationQuery =
+            query(
+                collection(
+                    db,
+                    "consultations"
+                ),
+                where(
+                    "doctorId",
+                    "==",
+                    doctorId
+                )
+            );
+
+
+        const snapshot =
+            await getDocs(
+                consultationQuery
+            );
+
+
+        const durations = [];
+
+
+        snapshot.forEach(
+            item => {
+
+                const data =
+                    item.data();
+
+
+                let duration =
+                    Number(
+                        data.consultationDurationMinutes
+                    );
+
+
+                if (
+                    !duration &&
+                    data.consultationStartedAt &&
+                    data.consultationCompletedAt
+                ) {
+
+                    const start =
+                        new Date(
+                            data.consultationStartedAt
+                        ).getTime();
+
+
+                    const end =
+                        new Date(
+                            data.consultationCompletedAt
+                        ).getTime();
+
+
+                    if (end > start) {
+
+                        duration =
+                            (
+                                end - start
+                            ) / 60000;
+
+                    }
+
+                }
+
+
+                if (
+                    duration >= 1 &&
+                    duration <= 60
+                ) {
+
+                    durations.push(
+                        duration
+                    );
+
+                }
+
+            }
+        );
+
+
+        if (!durations.length) {
+
+            return 8;
+
+        }
+
+
+        const recent =
+            durations.slice(-20);
+
+
+        const total =
+            recent.reduce(
+                (sum, value) =>
+                    sum + value,
+                0
+            );
+
+
+        const average =
+            total /
+            recent.length;
+
+
+        return Math.min(
+            30,
+            Math.max(
+                5,
+                Math.round(
+                    average
+                )
+            )
+        );
+
+
+    }
+    catch (error) {
+
+        console.warn(
+            "Average consultation calculation failed:",
+            error
+        );
+
+        return 8;
+
+    }
+
+}
+
+
+/* =========================================================
+   FORMAT TIME
+========================================================= */
+
+function formatTimeOnly(
+    date
+) {
+
+    if (!date) {
+        return "--";
+    }
+
+
+    return new Intl.DateTimeFormat(
+        "en-IN",
+        {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true
+        }
+    ).format(date);
+
+}
+
+
+/* =========================================================
+   APPROACHING TOKEN NOTIFICATION
+========================================================= */
+
+async function createApproachingNotificationOnce(
+    activeToken
+) {
+
+    try {
+
+        if (!activeToken) {
+            return;
+        }
+
+
+        const patientId =
+            activeToken.patientId;
+
+
+        const tokenId =
+            activeToken.id;
+
+
+        if (
+            !patientId ||
+            !tokenId
+        ) {
+
+            return;
+
+        }
+
+
+        const notificationKey =
+            "approaching_" +
+            tokenId;
+
+
+        const notificationQuery =
+            query(
+                collection(
+                    db,
+                    "notifications"
+                ),
+                where(
+                    "notificationKey",
+                    "==",
+                    notificationKey
+                )
+            );
+
+
+        const existing =
+            await getDocs(
+                notificationQuery
+            );
+
+
+        if (!existing.empty) {
+
+            return;
+
+        }
+
+
+        await addDoc(
+            collection(
+                db,
+                "notifications"
+            ),
+            {
+
+                patientId:
+                    patientId,
+
+                patientUid:
+                    activeToken.patientUid ||
+                    "",
+
+                notificationKey:
+                    notificationKey,
+
+                type:
+                    "token_approaching",
+
+                title:
+                    "Token Approaching",
+
+                message:
+                    "Your token is approaching. Please be ready.",
+
+                tokenId:
+                    tokenId,
+
+                tokenNumber:
+                    activeToken.number,
+
+                doctorId:
+                    activeToken.doctorId,
+
+                visitDate:
+                    activeToken.visitDate,
+
+                read:
+                    false,
+
+                createdAt:
+                    new Date().toISOString()
+
+            }
+        );
+
+
+    }
+    catch (error) {
+
+        console.warn(
+            "Approaching notification error:",
+            error
+        );
+
+    }
+
+}
+/* =========================================================
    DOCTOR QUEUE RENDER
 ========================================================= */
 
