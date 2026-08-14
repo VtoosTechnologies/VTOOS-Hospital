@@ -3942,6 +3942,286 @@ async function createApproachingNotificationOnce(
 
 }
 /* =========================================================
+   PATIENT LIVE QUEUE LISTENER
+   Automatically updates patient queue from Firestore
+========================================================= */
+
+function setupPatientLiveQueueListener() {
+
+    try {
+
+        /* Remove previous listener */
+        if (unsubscribeTokens) {
+
+            unsubscribeTokens();
+
+            unsubscribeTokens = null;
+
+        }
+
+
+        /* Patient must be logged in */
+        if (!currentPatient?.uid) {
+
+            console.warn(
+                "Patient not available for live queue."
+            );
+
+            return;
+
+        }
+
+
+        const doctorElement =
+            document.getElementById(
+                "patientDoctor"
+            );
+
+
+        const dateElement =
+            document.getElementById(
+                "patientVisitDate"
+            );
+
+
+        const doctorId =
+            doctorElement?.value;
+
+
+        const visitDate =
+            dateElement?.value ||
+            todayString();
+
+
+        /*
+           If doctor/date not selected yet,
+           listener will be started again when
+           booking details are selected.
+        */
+
+        if (!doctorId) {
+
+            console.log(
+                "Waiting for doctor selection."
+            );
+
+            return;
+
+        }
+
+
+        /* =====================================================
+           LIVE TOKEN QUERY
+        ===================================================== */
+
+        const tokenQuery =
+            query(
+                collection(
+                    db,
+                    "tokens"
+                ),
+                where(
+                    "doctorId",
+                    "==",
+                    doctorId
+                )
+            );
+
+
+        unsubscribeTokens =
+            onSnapshot(
+                tokenQuery,
+
+                async snapshot => {
+
+                    try {
+
+                        const patientTokens = [];
+
+
+                        snapshot.forEach(
+                            item => {
+
+                                const data =
+                                    item.data();
+
+
+                                /*
+                                   Only selected visit date
+                                */
+
+                                if (
+                                    data.visitDate !==
+                                    visitDate
+                                ) {
+
+                                    return;
+
+                                }
+
+
+                                /*
+                                   Only this patient
+                                */
+
+                                if (
+                                    data.patientUid !==
+                                    currentPatient.uid
+                                ) {
+
+                                    return;
+
+                                }
+
+
+                                patientTokens.push({
+
+                                    id:
+                                        item.id,
+
+                                    ...data
+
+                                });
+
+                            }
+                        );
+
+
+                        /*
+                           No token yet
+                        */
+
+                        if (
+                            !patientTokens.length
+                        ) {
+
+                            return;
+
+                        }
+
+
+                        /*
+                           Latest booking
+                        */
+
+                        patientTokens.sort(
+                            (a, b) => {
+
+                                return (
+                                    new Date(
+                                        b.bookedAt || 0
+                                    ) -
+                                    new Date(
+                                        a.bookedAt || 0
+                                    )
+                                );
+
+                            }
+                        );
+
+
+                        const activeToken =
+                            patientTokens[0];
+
+
+                        /*
+                           Update token number
+                        */
+
+                        const numberElement =
+                            document.getElementById(
+                                "patientTokenNumber"
+                            );
+
+
+                        if (numberElement) {
+
+                            numberElement.textContent =
+                                formatToken(
+                                    activeToken.number
+                                );
+
+                        }
+
+
+                        /*
+                           Update token status
+                        */
+
+                        const statusElement =
+                            document.getElementById(
+                                "patientTokenStatus"
+                            );
+
+
+                        if (statusElement) {
+
+                            statusElement.textContent =
+                                (
+                                    activeToken.status ||
+                                    "Waiting"
+                                ) +
+                                " • " +
+                                formatDate(
+                                    activeToken.visitDate
+                                );
+
+                        }
+
+
+                        /*
+                           Main queue calculation
+                           automatically updates:
+
+                           Current Token
+                           Patients Ahead
+                           Wait Time
+                           Arrival Time
+                           Doctor Status
+                           Live Updated Time
+                        */
+
+                        await calculatePatientQueue(
+                            activeToken
+                        );
+
+
+                    }
+                    catch (error) {
+
+                        console.error(
+                            "Patient live queue update error:",
+                            error
+                        );
+
+                    }
+
+                },
+
+                error => {
+
+                    console.error(
+                        "Patient queue listener error:",
+                        error
+                    );
+
+                }
+
+            );
+
+
+    }
+    catch (error) {
+
+        console.error(
+            "Unable to start patient live queue:",
+            error
+        );
+
+    }
+
+}
+/* =========================================================
    DOCTOR QUEUE RENDER
 ========================================================= */
 
