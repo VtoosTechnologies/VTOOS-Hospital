@@ -531,41 +531,74 @@
 
 
 
-           <!-- =================================================
-     PATIENT DASHBOARD
-================================================== -->
+    <!-- =========================================================
+     PATIENT DASHBOARD - PREMIUM MOBILE FRIENDLY
+========================================================= -->
 
 <div
     id="patientDashboard"
     class="dashboard-section hidden"
 >
 
-    <!-- =================================================
-         LIVE TOKEN CARD
-    ================================================== -->
+    <!-- =====================================================
+         WELCOME
+    ====================================================== -->
 
-    <div class="hero-token-card">
+    <div class="patient-welcome">
 
         <div>
 
-            <span class="hero-label">
+            <p class="eyebrow">
+                PATIENT DASHBOARD
+            </p>
+
+            <h2>
+                Welcome back 👋
+            </h2>
+
+            <p class="muted">
+                Your appointments, queue and health details in one place.
+            </p>
+
+        </div>
+
+        <div class="patient-live-badge">
+            <span class="live-dot"></span>
+            Live
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         TOKEN HERO
+    ====================================================== -->
+
+    <div class="patient-token-hero">
+
+        <div class="token-main">
+
+            <span class="token-label">
                 YOUR TOKEN
             </span>
 
             <div
                 id="patientTokenNumber"
-                class="hero-token-number"
+                class="token-number"
             >
                 --
             </div>
 
-            <p id="patientTokenStatus">
+            <div
+                id="patientTokenStatus"
+                class="token-status"
+            >
                 No active token
-            </p>
+            </div>
 
             <small
                 id="patientDoctorLiveStatus"
-                style="display:block;margin-top:6px;"
+                class="token-doctor-status"
             >
                 Doctor status waiting...
             </small>
@@ -573,12 +606,12 @@
         </div>
 
 
-        <div class="hero-token-right">
+        <div class="token-side-info">
 
-            <div>
+            <div class="token-info-item">
 
                 <span>
-                    Current Token
+                    Current
                 </span>
 
                 <strong id="patientCurrentToken">
@@ -588,10 +621,10 @@
             </div>
 
 
-            <div>
+            <div class="token-info-item">
 
                 <span>
-                    Patients Ahead
+                    Ahead
                 </span>
 
                 <strong id="patientAhead">
@@ -601,10 +634,10 @@
             </div>
 
 
-            <div>
+            <div class="token-info-item">
 
                 <span>
-                    Approx. Time
+                    Wait
                 </span>
 
                 <strong id="patientWaitTime">
@@ -618,54 +651,49 @@
     </div>
 
 
-    <!-- =================================================
+    <!-- =====================================================
          LIVE QUEUE
-    ================================================== -->
+    ====================================================== -->
 
     <div
         id="patientLiveQueueCard"
-        class="panel"
-        style="
-            margin-top:16px;
-            border-left:4px solid #22c55e;
-        "
+        class="patient-live-card"
     >
 
-        <div class="panel-header">
+        <div class="patient-card-header">
 
             <div>
 
-                <p class="eyebrow">
+                <span class="eyebrow">
                     LIVE QUEUE
-                </p>
+                </span>
 
                 <h3>
                     When should you come?
                 </h3>
 
                 <p>
-                    Waiting time will update automatically.
+                    Your waiting time updates automatically.
                 </p>
 
             </div>
 
-
             <span
                 id="patientLiveIndicator"
-                class="status-pill"
+                class="live-status-pill"
             >
-                ● LIVE
+                <span class="live-dot"></span>
+                LIVE
             </span>
 
         </div>
 
 
-        <div
-            class="history-grid"
-            style="margin-top:15px;"
-        >
+        <!-- QUEUE SUMMARY -->
 
-            <div>
+        <div class="queue-summary-grid">
+
+            <div class="queue-summary-box">
 
                 <span>
                     Doctor
@@ -678,20 +706,23 @@
             </div>
 
 
-            <div>
+            <div class="queue-summary-box">
 
                 <span>
-                    Doctor Status
+                    Status
                 </span>
 
-                <strong id="patientLiveDoctorStatus">
+                <strong
+                    id="patientLiveDoctorStatus"
+                    class="queue-status-text"
+                >
                     --
                 </strong>
 
             </div>
 
 
-            <div>
+            <div class="queue-summary-box">
 
                 <span>
                     Patients Ahead
@@ -704,7 +735,7 @@
             </div>
 
 
-            <div>
+            <div class="queue-summary-box">
 
                 <span>
                     Approx. Waiting
@@ -719,43 +750,40 @@
         </div>
 
 
+        <!-- ARRIVAL TIME -->
+
         <div
             id="patientRecommendedArrival"
-            style="
-                margin-top:18px;
-                padding:15px;
-                border-radius:12px;
-                background:rgba(34,197,94,.08);
-            "
+            class="arrival-box"
         >
 
-            <strong>
-                🏥 Recommended Arrival
-            </strong>
-
-            <div
-                id="patientArrivalTime"
-                style="
-                    font-size:20px;
-                    font-weight:700;
-                    margin-top:5px;
-                "
-            >
-                Waiting for queue update...
+            <div class="arrival-icon">
+                🕐
             </div>
 
-            <small>
-                Approximate time only. Emergency cases
-                and longer consultations may change this.
-            </small>
+            <div>
+
+                <span>
+                    Recommended time to reach hospital
+                </span>
+
+                <strong id="patientArrivalTime">
+                    Waiting for live queue...
+                </strong>
+
+                <small>
+                    This is an approximate time and may change
+                    depending on consultation duration and emergency cases.
+                </small>
+
+            </div>
 
         </div>
 
 
         <div
             id="patientQueueUpdatedAt"
-            class="muted"
-            style="margin-top:10px;font-size:12px;"
+            class="queue-updated"
         >
             Waiting for live update...
         </div>
@@ -763,245 +791,371 @@
     </div>
 
 
-    <!-- =================================================
-         DASHBOARD GRID
-    ================================================== -->
+    <!-- =====================================================
+         BOOK APPOINTMENT
+    ====================================================== -->
 
-    <div class="dashboard-grid">
+    <div class="patient-section-grid">
 
+        <div class="patient-main-column">
 
-        <!-- =================================================
-             BOOK TOKEN
-        ================================================== -->
+            <div class="panel patient-book-card">
 
-        <div class="panel">
+                <div class="patient-card-header">
 
-            <div class="panel-header">
+                    <div>
 
-                <div>
+                        <span class="eyebrow">
+                            APPOINTMENT
+                        </span>
 
-                    <p class="eyebrow">
-                        APPOINTMENT
-                    </p>
+                        <h3>
+                            Book Your Visit
+                        </h3>
 
-                    <h3>
-                        Book Hospital Token
-                    </h3>
+                        <p>
+                            Select doctor, date and reason.
+                            Your details are already saved.
+                        </p>
 
-                    <p>
-                        Your profile details are already saved.
-                        Just select what you need.
-                    </p>
+                    </div>
 
                 </div>
 
-            </div>
 
+                <!-- DOCTOR -->
 
-            <!-- DOCTOR -->
+                <div class="form-group">
 
-            <div class="form-group">
-
-                <label>
-                    Select Doctor
-                </label>
-
-                <select
-                    id="patientDoctor"
-                    onchange="patientDoctorChanged()"
-                >
-
-                    <option value="">
+                    <label>
                         Select Doctor
-                    </option>
+                    </label>
 
-                    <option value="doctor1">
-                        Dr. Kumar - General Medicine
-                    </option>
-
-                    <option value="doctor2">
-                        Dr. Priya - Pediatrics
-                    </option>
-
-                </select>
-
-            </div>
-
-
-            <!-- LIVE DOCTOR STATUS -->
-
-            <div
-                id="patientSelectedDoctorStatus"
-                style="
-                    margin-top:-5px;
-                    margin-bottom:15px;
-                "
-            >
-
-                <span class="muted">
-                    Select a doctor to see availability.
-                </span>
-
-            </div>
-
-
-            <!-- DATE -->
-
-            <div class="form-group">
-
-                <label>
-                    Visit Date
-                </label>
-
-                <input
-                    id="patientVisitDate"
-                    type="date"
-                    onchange="patientVisitDateChanged()"
-                >
-
-                <small class="muted">
-                    Select the date you plan to visit.
-                </small>
-
-            </div>
-
-
-            <!-- REASON -->
-
-            <div class="form-group">
-
-                <label>
-                    Reason for Visit
-                </label>
-
-
-                <div class="reason-grid">
-
-
-                    <button
-                        type="button"
-                        class="reason-btn"
-                        onclick="selectReason(
-                            this,
-                            'General Consultation'
-                        )"
+                    <select
+                        id="patientDoctor"
+                        onchange="patientDoctorChanged()"
                     >
-                        🩺 General Consultation
-                    </button>
 
+                        <option value="">
+                            Select Doctor
+                        </option>
 
-                    <button
-                        type="button"
-                        class="reason-btn"
-                        onclick="selectReason(
-                            this,
-                            'Fever / Cold / Cough'
-                        )"
-                    >
-                        🌡 Fever / Cold / Cough
-                    </button>
+                        <option value="doctor1">
+                            Dr. Kumar - General Medicine
+                        </option>
 
+                        <option value="doctor2">
+                            Dr. Priya - Pediatrics
+                        </option>
 
-                    <button
-                        type="button"
-                        class="reason-btn"
-                        onclick="selectReason(
-                            this,
-                            'Pain / Body Pain'
-                        )"
-                    >
-                        💢 Pain / Body Pain
-                    </button>
-
-
-                    <button
-                        type="button"
-                        class="reason-btn"
-                        onclick="selectReason(
-                            this,
-                            'Follow-up / Review'
-                        )"
-                    >
-                        🔄 Follow-up / Review
-                    </button>
-
-
-                    <button
-                        type="button"
-                        class="reason-btn"
-                        onclick="selectReason(
-                            this,
-                            'Medicine Review'
-                        )"
-                    >
-                        💊 Medicine Review
-                    </button>
-
-
-                    <button
-                        type="button"
-                        class="reason-btn"
-                        onclick="selectReason(
-                            this,
-                            'Test / Report Review'
-                        )"
-                    >
-                        🧪 Test / Report Review
-                    </button>
-
-
-                    <button
-                        type="button"
-                        class="reason-btn"
-                        onclick="selectReason(
-                            this,
-                            'Other'
-                        )"
-                    >
-                        + Other
-                    </button>
+                    </select>
 
                 </div>
 
 
-                <input
-                    type="hidden"
-                    id="selectedReason"
-                >
-
-
-                <!-- PREVIOUS DETAILS -->
+                <!-- DOCTOR STATUS -->
 
                 <div
-                    id="previousIssueBox"
-                    class="hidden"
-                    style="
-                        margin-top:15px;
-                        padding:12px;
-                        border-radius:10px;
-                        background:rgba(59,130,246,.08);
-                    "
+                    id="patientSelectedDoctorStatus"
+                    class="selected-doctor-status"
                 >
 
-                    <strong>
-                        Previous Visit Found
-                    </strong>
+                    <span class="muted">
+                        Select a doctor to see availability.
+                    </span>
 
-                    <div
-                        id="previousIssueText"
-                        style="margin-top:5px;"
+                </div>
+
+
+                <!-- DATE -->
+
+                <div class="form-group">
+
+                    <label>
+                        Visit Date
+                    </label>
+
+                    <input
+                        id="patientVisitDate"
+                        type="date"
+                        onchange="patientVisitDateChanged()"
                     >
-                        --
+
+                    <small class="muted">
+                        Choose the date you plan to visit.
+                    </small>
+
+                </div>
+
+
+                <!-- REASON -->
+
+                <div class="form-group">
+
+                    <label>
+                        Reason for Visit
+                    </label>
+
+
+                    <div class="reason-grid">
+
+                        <button
+                            type="button"
+                            class="reason-btn"
+                            onclick="selectReason(this,'General Consultation')"
+                        >
+                            🩺 General Consultation
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="reason-btn"
+                            onclick="selectReason(this,'Fever / Cold / Cough')"
+                        >
+                            🌡 Fever / Cold / Cough
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="reason-btn"
+                            onclick="selectReason(this,'Pain / Body Pain')"
+                        >
+                            💢 Pain / Body Pain
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="reason-btn"
+                            onclick="selectReason(this,'Follow-up / Review')"
+                        >
+                            🔄 Follow-up / Review
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="reason-btn"
+                            onclick="selectReason(this,'Medicine Review')"
+                        >
+                            💊 Medicine Review
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="reason-btn"
+                            onclick="selectReason(this,'Test / Report Review')"
+                        >
+                            🧪 Test / Report Review
+                        </button>
+
+
+                        <button
+                            type="button"
+                            class="reason-btn"
+                            onclick="selectReason(this,'Other')"
+                        >
+                            + Other
+                        </button>
+
                     </div>
 
 
+                    <input
+                        type="hidden"
+                        id="selectedReason"
+                    >
+
+
+                    <!-- PREVIOUS ISSUE -->
+
+                    <div
+                        id="previousIssueBox"
+                        class="previous-issue-box hidden"
+                    >
+
+                        <div>
+
+                            <strong>
+                                Previous visit found
+                            </strong>
+
+                            <p
+                                id="previousIssueText"
+                            >
+                                --
+                            </p>
+
+                        </div>
+
+                        <button
+                            type="button"
+                            class="secondary-btn"
+                            onclick="usePreviousIssue()"
+                        >
+                            Use Previous Details
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- VISIT TYPE -->
+
+                <div class="form-group">
+
+                    <label>
+                        Visit Type
+                    </label>
+
+                    <div class="visit-type-grid">
+
+                        <label
+                            class="visit-type-option normal"
+                        >
+
+                            <input
+                                type="radio"
+                                name="patientVisitType"
+                                id="visitTypeNormal"
+                                value="Normal"
+                                checked
+                            >
+
+                            <span>
+                                🟢 Normal
+                            </span>
+
+                        </label>
+
+
+                        <label
+                            class="visit-type-option emergency"
+                        >
+
+                            <input
+                                type="radio"
+                                name="patientVisitType"
+                                id="visitTypeEmergency"
+                                value="Emergency"
+                            >
+
+                            <span>
+                                🟠 Emergency Request
+                            </span>
+
+                        </label>
+
+                    </div>
+
+                    <small class="muted">
+                        Emergency requests are verified by hospital staff
+                        before priority is given.
+                    </small>
+
+                </div>
+
+
+                <!-- GENERATE TOKEN -->
+
+                <button
+                    type="button"
+                    class="primary-btn full patient-primary-action"
+                    onclick="generatePatientToken()"
+                >
+                    🎫 Generate Token
+                </button>
+
+
+                <!-- EMERGENCY -->
+
+                <div class="emergency-divider">
+
+                    <span>
+                        OR
+                    </span>
+
+                </div>
+
+
+                <button
+                    type="button"
+                    class="danger-btn full emergency-action"
+                    onclick="openEmergencyBooking()"
+                >
+
+                    <span>
+                        🚨 24×7 Emergency
+                    </span>
+
+                    <small>
+                        For urgent / emergency cases
+                    </small>
+
+                </button>
+
+
+                <div
+                    id="emergencyBookingInfo"
+                    class="emergency-box hidden"
+                >
+
+                    <strong>
+                        🚨 Emergency Request
+                    </strong>
+
+                    <p class="muted">
+                        Select the emergency reason.
+                        Hospital staff will verify the request.
+                    </p>
+
+
+                    <select
+                        id="emergencyReason"
+                    >
+
+                        <option value="">
+                            Select Emergency Reason
+                        </option>
+
+                        <option value="Accident / Injury">
+                            Accident / Injury
+                        </option>
+
+                        <option value="Severe Pain">
+                            Severe Pain
+                        </option>
+
+                        <option value="Breathing Difficulty">
+                            Breathing Difficulty
+                        </option>
+
+                        <option value="Chest Pain">
+                            Chest Pain
+                        </option>
+
+                        <option value="High Fever">
+                            High Fever
+                        </option>
+
+                        <option value="Other Emergency">
+                            Other Emergency
+                        </option>
+
+                    </select>
+
+
                     <button
                         type="button"
-                        class="secondary-btn"
-                        style="margin-top:8px;"
-                        onclick="usePreviousIssue()"
+                        class="danger-btn full"
+                        style="margin-top:10px;"
+                        onclick="submitEmergencyBooking()"
                     >
-                        Use Previous Details
+                        🚨 Send Emergency Request
                     </button>
 
                 </div>
@@ -1009,409 +1163,221 @@
             </div>
 
 
-            <!-- VISIT TYPE -->
+            <!-- =================================================
+                 MY VISITS
+            ================================================== -->
 
-            <div class="form-group">
+            <div
+                class="panel"
+                style="margin-top:20px;"
+            >
 
-                <label>
-                    Visit Type
-                </label>
+                <div class="patient-card-header">
 
+                    <div>
 
-                <div
-                    style="
-                        display:flex;
-                        gap:12px;
-                        flex-wrap:wrap;
-                    "
-                >
+                        <span class="eyebrow">
+                            HISTORY
+                        </span>
 
-                    <label>
+                        <h3>
+                            My Visits
+                        </h3>
 
-                        <input
-                            type="radio"
-                            name="patientVisitType"
-                            id="visitTypeNormal"
-                            value="Normal"
-                            checked
-                        >
+                        <p>
+                            Your previous and upcoming hospital visits.
+                        </p>
 
-                        🟢 Normal
-
-                    </label>
-
-
-                    <label>
-
-                        <input
-                            type="radio"
-                            name="patientVisitType"
-                            id="visitTypeEmergency"
-                            value="Emergency"
-                        >
-
-                        🟠 Emergency Request
-
-                    </label>
+                    </div>
 
                 </div>
 
 
-                <small class="muted">
-                    Emergency requests are verified by
-                    hospital staff before priority is given.
-                </small>
+                <div id="patientVisitsList">
 
-            </div>
+                    <div class="empty-state">
 
+                        <div>
+                            📅
+                        </div>
 
-            <!-- NORMAL TOKEN -->
+                        <h3>
+                            No previous visits
+                        </h3>
 
-            <button
-                type="button"
-                class="primary-btn full"
-                onclick="generatePatientToken()"
-            >
-                🎫 Generate Token
-            </button>
+                        <p>
+                            Your bookings will appear here.
+                        </p>
 
+                    </div>
 
-            <!-- EMERGENCY SEPARATOR -->
-
-            <div
-                style="
-                    display:flex;
-                    align-items:center;
-                    gap:10px;
-                    margin:18px 0;
-                "
-            >
-
-                <div
-                    style="
-                        flex:1;
-                        height:1px;
-                        background:rgba(148,163,184,.25);
-                    "
-                ></div>
-
-                <span class="muted">
-                    OR
-                </span>
-
-                <div
-                    style="
-                        flex:1;
-                        height:1px;
-                        background:rgba(148,163,184,.25);
-                    "
-                ></div>
-
-            </div>
-
-
-            <!-- 24x7 EMERGENCY -->
-
-            <button
-                type="button"
-                class="danger-btn full"
-                onclick="openEmergencyBooking()"
-            >
-
-                🚨 24×7 Emergency
-
-                <small
-                    style="
-                        display:block;
-                        margin-top:4px;
-                        opacity:.85;
-                    "
-                >
-                    For urgent / emergency cases
-                </small>
-
-            </button>
-
-
-            <div
-                id="emergencyBookingInfo"
-                class="hidden"
-                style="
-                    margin-top:15px;
-                    padding:15px;
-                    border-radius:12px;
-                    background:rgba(239,68,68,.08);
-                "
-            >
-
-                <strong>
-                    🚨 Emergency Request
-                </strong>
-
-                <p class="muted">
-                    Select the emergency reason.
-                    Hospital staff will verify the request.
-                </p>
-
-
-                <select
-                    id="emergencyReason"
-                >
-
-                    <option value="">
-                        Select Emergency Reason
-                    </option>
-
-                    <option value="Accident / Injury">
-                        Accident / Injury
-                    </option>
-
-                    <option value="Severe Pain">
-                        Severe Pain
-                    </option>
-
-                    <option value="Breathing Difficulty">
-                        Breathing Difficulty
-                    </option>
-
-                    <option value="Chest Pain">
-                        Chest Pain
-                    </option>
-
-                    <option value="High Fever">
-                        High Fever
-                    </option>
-
-                    <option value="Other Emergency">
-                        Other Emergency
-                    </option>
-
-                </select>
-
-
-                <button
-                    type="button"
-                    class="danger-btn full"
-                    style="margin-top:10px;"
-                    onclick="submitEmergencyBooking()"
-                >
-                    🚨 Send Emergency Request
-                </button>
+                </div>
 
             </div>
 
         </div>
 
 
-        <!-- =================================================
+        <!-- =====================================================
              MY HEALTH
-        ================================================== -->
+        ====================================================== -->
 
-        <div class="panel">
+        <div class="patient-side-column">
 
-            <div class="panel-header">
+            <div class="panel">
 
-                <div>
+                <div class="patient-card-header">
 
-                    <p class="eyebrow">
-                        MY HEALTH
-                    </p>
+                    <div>
 
-                    <h3>
-                        Health Summary
-                    </h3>
+                        <span class="eyebrow">
+                            MY HEALTH
+                        </span>
 
-                    <p>
-                        Your current treatment information.
-                    </p>
+                        <h3>
+                            Health Summary
+                        </h3>
+
+                        <p>
+                            Your current treatment information.
+                        </p>
+
+                    </div>
 
                 </div>
 
-            </div>
 
+                <!-- CONDITION -->
 
-            <!-- CONDITION -->
-
-            <div
-                style="
-                    margin-bottom:15px;
-                    padding:15px;
-                    border-radius:12px;
-                    background:rgba(59,130,246,.08);
-                "
-            >
-
-                <span class="muted">
-                    Current Health Condition
-                </span>
-
-                <strong
-                    id="patientHealthCondition"
-                    style="
-                        display:block;
-                        font-size:18px;
-                        margin-top:5px;
-                    "
-                >
-                    No current condition
-                </strong>
-
-            </div>
-
-
-            <!-- TREATMENT -->
-
-            <div
-                style="
-                    margin-bottom:15px;
-                    padding:15px;
-                    border-radius:12px;
-                    background:rgba(34,197,94,.08);
-                "
-            >
-
-                <span class="muted">
-                    Treatment Status
-                </span>
-
-                <strong
-                    id="patientTreatmentStatus"
-                    style="
-                        display:block;
-                        margin-top:5px;
-                    "
-                >
-                    No active treatment
-                </strong>
-
-            </div>
-
-
-            <!-- FOLLOW-UP -->
-
-            <div
-                style="
-                    margin-bottom:15px;
-                    padding:15px;
-                    border-radius:12px;
-                    background:rgba(245,158,11,.08);
-                "
-            >
-
-                <span class="muted">
-                    Follow-up
-                </span>
-
-                <strong
-                    id="patientHealthFollowup"
-                    style="
-                        display:block;
-                        margin-top:5px;
-                    "
-                >
-                    No follow-up
-                </strong>
-
-            </div>
-
-
-            <!-- PRESCRIPTION -->
-
-            <div
-                style="
-                    margin-bottom:15px;
-                    padding:15px;
-                    border-radius:12px;
-                    background:rgba(168,85,247,.08);
-                "
-            >
-
-                <span class="muted">
-                    Prescription
-                </span>
-
-                <strong
-                    id="patientPrescriptionStatus"
-                    style="
-                        display:block;
-                        margin-top:5px;
-                    "
-                >
-                    No active prescription
-                </strong>
-
-
-                <button
-                    type="button"
-                    class="secondary-btn"
-                    style="margin-top:10px;"
-                    onclick="openPage('prescriptions')"
-                >
-                    💊 View Prescription
-                </button>
-
-            </div>
-
-
-            <!-- QUICK ACTIONS -->
-
-            <div class="quick-grid">
-
-                <button
-                    onclick="openPage('followups')"
-                >
+                <div class="health-summary-item condition">
 
                     <span>
-                        🔔
+                        Current Health Condition
                     </span>
 
-                    <strong>
-                        Follow-ups
+                    <strong id="patientHealthCondition">
+                        No current condition
                     </strong>
 
-                    <small id="patientFollowupCount">
-                        0 pending
-                    </small>
-
-                </button>
+                </div>
 
 
-                <button
-                    onclick="openPage('documents')"
-                >
+                <!-- TREATMENT -->
+
+                <div class="health-summary-item treatment">
 
                     <span>
-                        📁
+                        Treatment Status
                     </span>
 
-                    <strong>
-                        Documents
+                    <strong id="patientTreatmentStatus">
+                        No active treatment
                     </strong>
 
-                    <small id="patientDocumentCount">
-                        0 documents
-                    </small>
-
-                </button>
+                </div>
 
 
-                <button
-                    onclick="openPage('prescriptions')"
-                >
+                <!-- FOLLOW UP -->
+
+                <div class="health-summary-item followup">
 
                     <span>
-                        💊
+                        Follow-up
                     </span>
 
-                    <strong>
-                        Prescriptions
+                    <strong id="patientHealthFollowup">
+                        No follow-up
                     </strong>
 
-                    <small>
-                        View history
-                    </small>
+                </div>
 
-                </button>
+
+                <!-- PRESCRIPTION -->
+
+                <div class="health-summary-item prescription">
+
+                    <span>
+                        Prescription
+                    </span>
+
+                    <strong id="patientPrescriptionStatus">
+                        No active prescription
+                    </strong>
+
+
+                    <button
+                        type="button"
+                        class="secondary-btn full"
+                        style="margin-top:10px;"
+                        onclick="openPage('prescriptions')"
+                    >
+                        💊 View Prescription
+                    </button>
+
+                </div>
+
+
+                <!-- QUICK ACTIONS -->
+
+                <div class="quick-action-grid">
+
+                    <button
+                        onclick="openPage('followups')"
+                    >
+
+                        <span>
+                            🔔
+                        </span>
+
+                        <strong>
+                            Follow-ups
+                        </strong>
+
+                        <small id="patientFollowupCount">
+                            0 pending
+                        </small>
+
+                    </button>
+
+
+                    <button
+                        onclick="openPage('documents')"
+                    >
+
+                        <span>
+                            📁
+                        </span>
+
+                        <strong>
+                            Documents
+                        </strong>
+
+                        <small id="patientDocumentCount">
+                            0 documents
+                        </small>
+
+                    </button>
+
+
+                    <button
+                        onclick="openPage('prescriptions')"
+                    >
+
+                        <span>
+                            💊
+                        </span>
+
+                        <strong>
+                            Prescriptions
+                        </strong>
+
+                        <small>
+                            View history
+                        </small>
+
+                    </button>
+
+                </div>
 
             </div>
 
@@ -1420,83 +1386,28 @@
     </div>
 
 
-    <!-- =================================================
-         MY VISITS
-    ================================================== -->
+    <!-- =====================================================
+         RECOVERY
+    ====================================================== -->
 
     <div
-        class="panel"
-        style="margin-top:20px;"
+        class="panel patient-bottom-card"
     >
 
-        <div class="panel-header">
+        <div class="patient-card-header">
 
             <div>
 
-                <p class="eyebrow">
-                    VISIT HISTORY
-                </p>
-
-                <h3>
-                    My Visits
-                </h3>
-
-                <p>
-                    View, edit or cancel your bookings.
-                </p>
-
-            </div>
-
-        </div>
-
-
-        <div id="patientVisitsList">
-
-            <div class="empty-state">
-
-                <div>
-                    📅
-                </div>
-
-                <h3>
-                    No previous visits
-                </h3>
-
-                <p>
-                    Your bookings will appear here.
-                </p>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <!-- =================================================
-         RECOVERY STATUS
-    ================================================== -->
-
-    <div
-        class="panel"
-        style="margin-top:20px;"
-    >
-
-        <div class="panel-header">
-
-            <div>
-
-                <p class="eyebrow">
+                <span class="eyebrow">
                     RECOVERY
-                </p>
+                </span>
 
                 <h3>
                     How are you feeling?
                 </h3>
 
                 <p>
-                    Your answer helps the system decide
-                    whether a reminder is required.
+                    Your response helps us decide whether a reminder is required.
                 </p>
 
             </div>
@@ -1504,41 +1415,49 @@
         </div>
 
 
-        <div class="reason-grid">
+        <div class="outcome-grid">
 
             <button
                 type="button"
-                class="reason-btn"
+                class="outcome-btn cured"
                 onclick="setPatientOutcome('Cured')"
             >
-                ✅ Cured
+                <span>✅</span>
+                <strong>Cured</strong>
+                <small>Feeling well</small>
             </button>
 
 
             <button
                 type="button"
-                class="reason-btn"
+                class="outcome-btn improving"
                 onclick="setPatientOutcome('Improving')"
             >
-                📈 Improving
+                <span>📈</span>
+                <strong>Improving</strong>
+                <small>Getting better</small>
             </button>
 
 
             <button
                 type="button"
-                class="reason-btn"
+                class="outcome-btn pending"
                 onclick="setPatientOutcome('Not Yet')"
             >
-                ⏳ Not Yet
+                <span>⏳</span>
+                <strong>Not Yet</strong>
+                <small>Still under treatment</small>
             </button>
 
 
             <button
                 type="button"
-                class="reason-btn"
+                class="outcome-btn worse"
                 onclick="setPatientOutcome('Worse')"
             >
-                ⚠️ Getting Worse
+                <span>⚠️</span>
+                <strong>Getting Worse</strong>
+                <small>Need attention</small>
             </button>
 
         </div>
@@ -1546,8 +1465,7 @@
 
         <div
             id="patientOutcomeMessage"
-            class="muted"
-            style="margin-top:12px;"
+            class="outcome-message"
         >
             Select your condition when required.
         </div>
@@ -1555,29 +1473,28 @@
     </div>
 
 
-    <!-- =================================================
-         RATING / IMPROVEMENT
-    ================================================== -->
+    <!-- =====================================================
+         FEEDBACK
+    ====================================================== -->
 
     <div
-        class="panel"
-        style="margin-top:20px;"
+        class="panel patient-bottom-card"
     >
 
-        <div class="panel-header">
+        <div class="patient-card-header">
 
             <div>
 
-                <p class="eyebrow">
+                <span class="eyebrow">
                     FEEDBACK
-                </p>
+                </span>
 
                 <h3>
                     Rate Your Visit
                 </h3>
 
                 <p>
-                    Your feedback helps improve the hospital.
+                    Your feedback helps improve the hospital experience.
                 </p>
 
             </div>
@@ -1587,12 +1504,7 @@
 
         <div
             id="patientRatingStars"
-            style="
-                display:flex;
-                gap:8px;
-                flex-wrap:wrap;
-                margin-top:10px;
-            "
+            class="rating-stars"
         >
 
             <button
@@ -1637,21 +1549,19 @@
             id="patientImprovementFeedback"
             rows="3"
             placeholder="Any improvement suggestion? Optional"
-            style="margin-top:15px;"
         ></textarea>
 
 
         <button
             type="button"
             class="primary-btn"
-            style="margin-top:10px;"
+            style="margin-top:12px;"
             onclick="submitPatientFeedback()"
         >
             Submit Feedback
         </button>
 
     </div>
-
 
 </div>
 
